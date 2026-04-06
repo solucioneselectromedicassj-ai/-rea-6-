@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>ÁREA 6 · Ingeniería Clínica</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --az:#003d82;--az2:#0056b3;
+  --bg:#0a0a14;--s1:#161628;--s2:#1e1e36;--s3:#252545;--s4:#2e2e52;
+  --txt:#e8eaff;--dim:#7878a0;--brd:#2a2a4a;
+  --ro:#e53935;--na:#f57c00;--ve:#2e7d32;--ve2:#43a047;--cy:#0097a7;
+  --sh:0 4px 20px rgba(0,0,0,.5);--r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--txt);overflow:hidden}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--az);border-radius:3px}
+/* LOGIN */
+#loginScr{position:fixed;inset:0;background:linear-gradient(160deg,var(--bg),#001030);display:flex;align-items:center;justify-content:center;z-index:999}
+.lbox{background:var(--s2);border:1px solid var(--brd);border-radius:18px;padding:2rem 1.5rem;width:min(340px,94vw);box-shadow:var(--sh)}
+.llogo{text-align:center;margin-bottom:1.5rem}
+.lbig{width:68px;height:68px;background:var(--az);border-radius:14px;display:inline-flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:900;box-shadow:0 0 30px rgba(0,61,130,.5)}
+.llogo h2{margin-top:.6rem;font-size:1rem;color:var(--dim)}
+.llogo p{font-size:.72rem;color:var(--dim)}
+.ubtn{width:100%;padding:.85rem 1rem;background:var(--s3);border:1px solid var(--brd);border-radius:var(--r);color:var(--txt);font-size:.9rem;cursor:pointer;margin-bottom:.5rem;display:flex;align-items:center;gap:.7rem;transition:all .2s;text-align:left}
+.ubtn:hover,.ubtn:active{background:var(--az);border-color:var(--az2)}
+.av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.82rem;flex-shrink:0}
+/* APP */
+#app{display:none;flex-direction:column;height:100dvh}
+/* HEADER */
+#hdr{background:var(--s1);border-bottom:1px solid var(--brd);padding:.4rem .6rem;display:flex;align-items:center;gap:.4rem;flex-shrink:0}
+.hlogo{background:var(--az);border-radius:7px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.78rem;flex-shrink:0}
+.htit{font-size:.75rem;font-weight:700;line-height:1.2;flex-shrink:0}
+.htit small{color:var(--dim);font-weight:400;font-size:.65rem;display:block}
+.hsp{flex:1}
+.hib{background:var(--s3);border:1px solid var(--brd);color:var(--txt);border-radius:6px;padding:.28rem .45rem;cursor:pointer;font-size:.78rem;flex-shrink:0;transition:background .15s;line-height:1.2}
+.hib:hover,.hib:active{background:var(--az)}
+/* MAIN */
+#main{flex:1;overflow-y:auto;overflow-x:hidden;padding:.6rem;-webkit-overflow-scrolling:touch}
+/* ALERT */
+#alertBan{background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.35);border-radius:8px;padding:.45rem .7rem;margin-bottom:.5rem;font-size:.72rem;color:#ff8a8a;display:none}
+/* SERVICE PICKER */
+#picker{background:var(--s2);border:1px solid var(--brd);border-radius:12px;padding:.8rem;margin-bottom:.7rem;display:none}
+#picker h3{font-size:.78rem;color:var(--dim);margin-bottom:.5rem;text-align:center}
+#psrch{width:100%;background:var(--s3);border:1px solid var(--brd);color:var(--txt);border-radius:8px;padding:.55rem .7rem;font-size:.88rem;margin-bottom:.5rem}
+#psrch::placeholder{color:var(--dim)}
+#plist{display:grid;grid-template-columns:1fr 1fr;gap:.35rem;max-height:220px;overflow-y:auto}
+.pli{background:var(--s3);border:1px solid var(--brd);border-radius:8px;padding:.55rem .6rem;cursor:pointer;display:flex;align-items:center;gap:.4rem;font-size:.76rem;font-weight:600;transition:all .15s}
+.pli:hover,.pli:active{background:var(--az);border-color:var(--az2)}
+/* DASHBOARD */
+#dash{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:.55rem}
+.sc{background:var(--s2);border:1px solid var(--brd);border-radius:var(--r);padding:.8rem .65rem;cursor:pointer;transition:all .18s;position:relative;overflow:hidden}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--az)}
+.sc.al::before{background:var(--ro)}.sc.wn::before{background:var(--na)}
+.sc:active{transform:scale(.97)}
+.sc .ico{font-size:1.4rem;margin-bottom:.3rem}
+.sc h3{font-size:.7rem;font-weight:700;line-height:1.3;margin-bottom:.4rem}
+.sc .cnts{display:flex;gap:.3rem;flex-wrap:wrap}
+.bx{border-radius:20px;padding:.12rem .42rem;font-size:.6rem;font-weight:700}
+.baz{background:rgba(0,61,130,.35);color:#7eb3ff;border:1px solid #003d82}
+.bro{background:rgba(229,57,53,.2);color:#ff8a8a;border:1px solid var(--ro)}
+.bna{background:rgba(245,124,0,.2);color:#ffb74d;border:1px solid var(--na)}
+.bdim{background:rgba(120,120,160,.1);color:var(--dim);border:1px solid var(--s4)}
+/* SERVICE VIEW */
+#srvView{display:none;flex-direction:column;height:100%}
+#srvHdr{display:flex;align-items:center;gap:.45rem;margin-bottom:.5rem;flex-shrink:0}
+#srvHdr .back{background:var(--s3);border:1px solid var(--brd);color:var(--txt);border-radius:6px;padding:.3rem .6rem;cursor:pointer;font-size:.74rem}
+#srvHdr .srch{background:var(--s3);border:1px solid var(--brd);color:var(--txt);border-radius:6px;padding:.3rem .55rem;font-size:.74rem;width:110px;margin-left:auto}
+/* TABS */
+.tabs{display:flex;gap:2px;overflow-x:auto;background:var(--s1);border-radius:8px 8px 0 0;padding:3px 3px 0;border:1px solid var(--brd);border-bottom:none;flex-shrink:0}
+.tabs::-webkit-scrollbar{height:0}
+.tb{padding:.35rem .55rem;background:transparent;border:none;color:var(--dim);font-size:.68rem;cursor:pointer;border-radius:6px 6px 0 0;white-space:nowrap;font-weight:600;transition:all .15s}
+.tb.on{background:var(--s2);color:var(--txt);border:1px solid var(--brd);border-bottom:1px solid var(--s2)}
+.tcont{background:var(--s2);border:1px solid var(--brd);border-radius:0 var(--r) var(--r) var(--r);padding:.6rem;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+/* TOOLBAR */
+.tbar{display:flex;gap:.35rem;margin-bottom:.5rem;flex-wrap:wrap;align-items:center}
+.btn{border:none;border-radius:6px;padding:.35rem .65rem;font-size:.74rem;cursor:pointer;font-weight:700;display:inline-flex;align-items:center;gap:.25rem;transition:all .15s}
+.baz2{background:var(--az);color:#fff}.baz2:active{background:var(--az2)}
+.bgr{background:var(--s3);color:var(--txt);border:1px solid var(--brd)}.bgr:active{background:var(--s4)}
+.bro2{background:rgba(229,57,53,.2);color:#ff8a8a;border:1px solid var(--ro)}.bro2:active{background:var(--ro);color:#fff}
+.sp{flex:1}
+.fi{flex:1;background:var(--s3);border:1px solid var(--brd);color:var(--txt);border-radius:6px;padding:.38rem .55rem;font-size:.76rem}
+.fi::placeholder{color:var(--dim)}
+/* TABLE */
+.tw{overflow-x:auto;border-radius:8px;border:1px solid var(--brd);-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:.7rem}
+thead th{background:var(--s3);color:var(--dim);padding:.4rem .55rem;text-align:left;font-weight:700;white-space:nowrap;border-bottom:1px solid var(--brd)}
+tbody tr{border-bottom:1px solid rgba(42,42,74,.4)}
+tbody tr:active{background:var(--s3)}
+td{padding:.4rem .55rem;vertical-align:middle}
+.nd{text-align:center;padding:1.6rem;color:var(--dim);font-style:italic;font-size:.76rem}
+.pill{border-radius:20px;padding:.13rem .45rem;font-size:.6rem;font-weight:700}
+.pok{background:rgba(46,125,50,.2);color:#81c784}
+.pwn{background:rgba(245,124,0,.2);color:#ffb74d}
+.pal{background:rgba(229,57,53,.2);color:#ff8a8a}
+.pin{background:rgba(0,151,167,.2);color:#4dd0e1}
+.pdim{background:rgba(120,120,160,.12);color:var(--dim)}
+.dc{border-radius:20px;padding:.12rem .42rem;font-size:.6rem;font-weight:700;display:inline-block}
+.arow{display:flex;gap:.25rem}
+.ab{background:var(--s3);border:1px solid var(--brd);color:var(--txt);border-radius:5px;padding:.18rem .38rem;cursor:pointer;font-size:.65rem}
+.ab:active{background:var(--az)}
+/* EMPTY */
+.emp{background:var(--s3);border-radius:8px;padding:1.4rem;text-align:center;color:var(--dim);font-size:.76rem;line-height:1.5}
+.emp .ei{font-size:1.8rem;margin-bottom:.35rem}
+.stitle{font-size:.7rem;font-weight:700;color:var(--dim);margin:.5rem 0 .3rem}
+/* FORM PANEL (bottom sheet) */
+#fp{position:fixed;left:0;right:0;bottom:0;background:var(--s1);border-top:2px solid var(--az);border-radius:16px 16px 0 0;z-index:400;transform:translateY(100%);transition:transform .28s ease;max-height:88dvh;display:flex;flex-direction:column;box-shadow:0 -8px 30px rgba(0,0,0,.6)}
+#fp.open{transform:translateY(0)}
+#fphdr{padding:.7rem .9rem .45rem;display:flex;align-items:center;flex-shrink:0;border-bottom:1px solid var(--brd)}
+#fptit{font-size:.85rem;font-weight:700;flex:1}
+#fpx{background:var(--s3);border:1px solid var(--brd);color:var(--txt);border-radius:5px;padding:.25rem .5rem;cursor:pointer;font-size:.78rem}
+#fpbody{padding:.7rem .9rem;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+#fpfoot{padding:.5rem .9rem;display:flex;gap:.4rem;justify-content:flex-end;border-top:1px solid var(--brd);flex-shrink:0}
+.fg{margin-bottom:.65rem}
+.fg label{display:block;font-size:.7rem;color:var(--dim);margin-bottom:.22rem;font-weight:600}
+.fg input,.fg select,.fg textarea{width:100%;background:var(--s3);border:1px solid var(--brd);color:var(--txt);border-radius:6px;padding:.45rem .6rem;font-size:.82rem;font-family:inherit}
+.fg textarea{resize:vertical;min-height:60px}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--az2)}
+/* STOCK */
+#stockPanel{display:none}
+.sg{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.45rem;margin-top:.4rem}
+.si{background:var(--s2);border-radius:8px;padding:.6rem;border-left:3px solid var(--ve2)}
+.si.lw{border-color:var(--na)}.si.zr{border-color:var(--ro)}
+.si h4{font-size:.72rem;font-weight:700;margin-bottom:.3rem;line-height:1.3}
+.si .sn2{display:flex;gap:.45rem;font-size:.66rem;flex-wrap:wrap}
+/* ADMIN */
+#adminPanel{display:none}
+.ig{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.7rem}
+@media(min-width:460px){.ig{grid-template-columns:repeat(4,1fr)}}
+.ic{background:var(--s2);border:1px solid var(--brd);border-radius:var(--r);padding:.8rem .7rem}
+.ic h4{font-size:.76rem;font-weight:700;margin-bottom:.22rem}
+.ilu{font-size:.63rem;color:var(--dim);margin-bottom:.55rem;min-height:.8rem}
+.drop{border:2px dashed var(--brd);border-radius:8px;padding:.75rem;text-align:center;cursor:pointer;position:relative;transition:all .2s}
+.drop:hover,.drop.drag{border-color:var(--az2);background:rgba(0,86,179,.07)}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop .di{font-size:1.2rem}.drop p{font-size:.65rem;color:var(--dim);margin-top:.15rem}
+.icols{font-size:.6rem;color:var(--dim);margin-top:.3rem;line-height:1.4}
+#prev{background:var(--s2);border:1px solid var(--brd);border-radius:var(--r);padding:.8rem;margin-top:.7rem;display:none}
+#prev h4{font-size:.8rem;font-weight:700;margin-bottom:.4rem}
+.pss{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem}
+.ps{background:var(--s3);border-radius:6px;padding:.3rem .55rem;font-size:.7rem}
+.ps b{color:#4dd0e1}
+/* CONFIRM */
+#cfm{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:600;display:none;align-items:center;justify-content:center}
+#cfm.on{display:flex}
+.cfb{background:var(--s2);border:1px solid var(--brd);border-radius:var(--r);padding:1.3rem 1.1rem;width:min(310px,92vw);text-align:center;box-shadow:var(--sh)}
+.cfb p{font-size:.84rem;line-height:1.5;margin-bottom:1rem}
+/* TOAST */
+#tst{position:fixed;bottom:.9rem;left:50%;transform:translateX(-50%);z-index:700;display:flex;flex-direction:column;gap:.3rem;align-items:center;pointer-events:none}
+.tm{background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.45rem .8rem;font-size:.74rem;box-shadow:var(--sh);animation:fi .22s ease;white-space:nowrap}
+.tm.ok{border-color:var(--ve2);background:rgba(46,125,50,.15)}
+.tm.er{border-color:var(--ro);background:rgba(229,57,53,.15)}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScr">
+  <div class="lbox">
+    <div class="llogo">
+      <div class="lbig">A6</div>
+      <h2>Ingeniería Clínica</h2>
+      <p>Hospital Rawson · San Juan</p>
+    </div>
+    <p style="font-size:.74rem;color:var(--dim);text-align:center;margin-bottom:.9rem">Seleccioná tu usuario</p>
+    <button class="ubtn" onclick="doLogin('Pablo Morales','Técnico')">
+      <div class="av" style="background:rgba(0,61,130,.35);color:#7eb3ff">PM</div>
+      <div><div style="font-weight:700">Pablo Morales</div><div style="font-size:.68rem;color:var(--dim)">Técnico Biomédico</div></div>
+    </button>
+    <button class="ubtn" onclick="doLogin('Rocío Buenamaizon','Bioingeniera')">
+      <div class="av" style="background:rgba(46,125,50,.35);color:#81c784">RB</div>
+      <div><div style="font-weight:700">Rocío Buenamaizon</div><div style="font-size:.68rem;color:var(--dim)">Bioingeniera</div></div>
+    </button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div id="hdr">
+    <div class="hlogo">A6</div>
+    <div class="htit">ÁREA 6<small>Ing. Clínica</small></div>
+    <div class="hsp"></div>
+    <button class="hib" id="btnPick" onclick="togglePicker()">☰ Servicios</button>
+    <button class="hib" onclick="showStock()">📦</button>
+    <button class="hib" onclick="showAdmin()">⚙️</button>
+    <button class="hib" onclick="doLogout()" style="color:#ff8a8a">⏏</button>
+  </div>
+
+  <div id="main">
+    <div id="alertBan"></div>
+
+    <!-- PICKER centrado en dashboard -->
+    <div id="picker">
+      <h3>¿A qué servicio vas?</h3>
+      <input id="psrch" type="text" placeholder="Escribí el nombre..." oninput="filtPicker(this.value)" autocomplete="off">
+      <div id="plist"></div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dash"></div>
+
+    <!-- SERVICE VIEW -->
+    <div id="srvView">
+      <div id="srvHdr">
+        <button class="back" onclick="goHome()">← Inicio</button>
+        <span id="srvIco" style="font-size:1.15rem"></span>
+        <strong id="srvNm" style="font-size:.88rem;line-height:1.2"></strong>
+        <input class="srch" type="search" placeholder="🔍 Filtrar..." oninput="tabSearch(this.value)">
+      </div>
+      <div class="tabs" id="tabs"></div>
+      <div class="tcont" id="tcont"></div>
+    </div>
+
+    <!-- STOCK -->
+    <div id="stockPanel">
+      <div class="tbar" style="margin-bottom:.6rem">
+        <button class="btn bgr" onclick="goHome()">← Inicio</button>
+        <strong style="font-size:.88rem">📦 Stock</strong>
+        <div class="sp"></div>
+        <button class="btn baz2" onclick="openForm('stock')">+ Agregar</button>
+      </div>
+      <div class="tbar">
+        <input class="fi" type="text" placeholder="Buscar repuesto..." oninput="renderStock(this.value)">
+      </div>
+      <div id="stkCont"></div>
+    </div>
+
+    <!-- ADMIN -->
+    <div id="adminPanel">
+      <div class="tbar" style="margin-bottom:.7rem">
+        <button class="btn bgr" onclick="goHome()">← Inicio</button>
+        <strong style="font-size:.88rem">⚙️ Importar Excel mensual</strong>
+      </div>
+      <div style="background:rgba(0,151,167,.07);border:1px solid rgba(0,151,167,.3);border-radius:8px;padding:.6rem .8rem;margin-bottom:.7rem;font-size:.73rem;color:#4dd0e1">
+        📋 Subí cada Excel para actualizar los datos. Se reemplazan los datos anteriores.
+      </div>
+      <div class="ig">
+        <div class="ic">
+          <h4>🩺 Equipos</h4><div class="ilu" id="luEq">Sin datos</div>
+          <div class="drop" ondragover="dov(event,this)" ondragleave="dlv(this)" ondrop="ddf(event,'eq')">
+            <input type="file" accept=".xlsx" onchange="loadXLS(this,'eq')">
+            <div class="di">📊</div><p>equipos.xlsx</p>
+          </div>
+          <div class="icols">Descrip · Marca-Modelo · Nº Serie · Servicio · Estado · Mant.</div>
+        </div>
+        <div class="ic">
+          <h4>📁 Expedientes</h4><div class="ilu" id="luEx">Sin datos</div>
+          <div class="drop" ondragover="dov(event,this)" ondragleave="dlv(this)" ondrop="ddf(event,'ex')">
+            <input type="file" accept=".xlsx" onchange="loadXLS(this,'ex')">
+            <div class="di">📊</div><p>expe.xlsx</p>
+          </div>
+          <div class="icols">Servicio · N° Expediente · Fecha · Descripcion · Estado</div>
+        </div>
+        <div class="ic">
+          <h4>📋 Órdenes</h4><div class="ilu" id="luOr">Sin datos</div>
+          <div class="drop" ondragover="dov(event,this)" ondragleave="dlv(this)" ondrop="ddf(event,'or')">
+            <input type="file" accept=".xlsx" onchange="loadXLS(this,'or')">
+            <div class="di">📊</div><p>orden.xlsx</p>
+          </div>
+          <div class="icols">Servicio · N° Orden · Fecha · Descripcion · Estado</div>
+        </div>
+        <div class="ic">
+          <h4>📦 Stock</h4><div class="ilu" id="luSt">Sin datos</div>
+          <div class="drop" ondragover="dov(event,this)" ondragleave="dlv(this)" ondrop="ddf(event,'st')">
+            <input type="file" accept=".xlsx" onchange="loadXLS(this,'st')">
+            <div class="di">📊</div><p>Stock_actual.xlsx</p>
+          </div>
+          <div class="icols">Area · Descrip · Cantidad_in · Cantidad_out · Stock</div>
+        </div>
+      </div>
+      <!-- PREVIEW -->
+      <div id="prev">
+        <h4 id="prevTit"></h4>
+        <div class="pss" id="prevSt"></div>
+        <div class="tw" id="prevTbl"></div>
+        <div style="display:flex;gap:.45rem;margin-top:.6rem">
+          <button class="btn baz2" onclick="doImport()">✅ Confirmar importación</button>
+          <button class="btn bgr" onclick="cancelPrev()">✕ Cancelar</button>
+        </div>
+      </div>
+      <div style="margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--brd)">
+        <div class="stitle">DATOS LOCALES</div>
+        <div style="display:flex;gap:.45rem;flex-wrap:wrap">
+          <button class="btn bgr" onclick="dbSt()">📊 Ver conteos</button>
+          <button class="btn bro2" onclick="clearAll()">🗑️ Borrar todo</button>
+        </div>
+        <div id="dbSC" style="margin-top:.5rem;font-size:.72rem;color:var(--dim)"></div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- FORM PANEL -->
+<div id="fp">
+  <div id="fphdr">
+    <div id="fptit">Nuevo registro</div>
+    <button id="fpx" onclick="closeForm()">✕</button>
+  </div>
+  <div id="fpbody"></div>
+  <div id="fpfoot">
+    <button class="btn bgr" onclick="closeForm()">Cancelar</button>
+    <button class="btn baz2" onclick="saveForm()">💾 Guardar</button>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div id="cfm">
+  <div class="cfb">
+    <p id="cfmMsg"></p>
+    <div style="display:flex;gap:.5rem;justify-content:center">
+      <button class="btn bro2" id="cfmOk">Confirmar</button>
+      <button class="btn bgr" onclick="closeCfm()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="tst"></div>
+
+<script>
+// ═══════════════════════════════════
+// CONSTANTES
+// ═══════════════════════════════════
+const SRVS=[
+  {id:'ANATOMIA PATOLOGICA',lb:'Anatomía Patológica',ico:'🔬'},
+  {id:'LABORATORIO CENTRAL',lb:'Laboratorio Central',ico:'🧪'},
+  {id:'HEMATOLOGIA Y HEMOTERAPIA',lb:'Hemoterapia y Hematología',ico:'🩸'},
+  {id:'CLINICA MEDICA',lb:'Clínica Médica',ico:'👨‍⚕️'},
+  {id:'NEUROCIRUGIA',lb:'Neurocirugía',ico:'🧠'},
+  {id:'NEUROLOGIA',lb:'Neurología',ico:'🧬'},
+  {id:'GASTROENTEROLOGIA',lb:'Gastroenterología / Endoscopía',ico:'🔭'},
+  {id:'VACUNATORIO',lb:'Vacunatorio',ico:'💉'},
+  {id:'PROCURACION',lb:'Procuración',ico:'🏥'},
+  {id:'INGENIERIA CLINICA',lb:'Ingeniería Clínica',ico:'⚙️'},
+];
+const GASTRO=['GASTROENTEROLOGIA','ENDOSCOPIA','ENDOSCOPÍA','GASTROENTEROLOGÍA'];
+const TABS=[{id:'equipos',lb:'🩺 Equipos'},{id:'expedientes',lb:'📁 Expedientes'},{id:'ordenes',lb:'📋 Órdenes'},{id:'actas',lb:'📄 Actas'},{id:'tareas',lb:'✅ Tareas'},{id:'bajas',lb:'🗑️ Bajas'}];
+const EST_EQ=['En Servicio','Rep. en Fabrica','En Deposito IC','Esp. Repuestos','Fuera de Servicio'];
+const EST_EX=['En Trámite','Aprobado','Archivado','Rechazado'];
+const EST_OR=['Iniciada','En Proceso','Completada','Cancelada'];
+const MOTIVOS=['Obsoleto','Rotura Irreparable','Pérdida','Robo','Otro'];
+const TIPOS_A=['Salida','Entrada','Préstamo','Traslado'];
+const DB_NM='A6v3';
+const STORES=['equipos','expedientes','ordenes','actas','tareas','bajas','stock','meta'];
+
+// ═══════════════════════════════════
+// ESTADO
+// ═══════════════════════════════════
+let db,user,curSrv=null,curTab=0,fmType='',fmMode='new',fmId=null,pending={},pickerOn=false;
+
+// ═══════════════════════════════════
+// INDEXEDDB
+// ═══════════════════════════════════
+function openDB(){
+  return new Promise((ok,er)=>{
+    const r=indexedDB.open(DB_NM,1);
+    r.onupgradeneeded=e=>{
+      const d=e.target.result;
+      STORES.forEach(s=>{if(!d.objectStoreNames.contains(s))d.createObjectStore(s,s==='meta'?{keyPath:'key'}:{keyPath:'id',autoIncrement:true})});
+    };
+    r.onsuccess=e=>{db=e.target.result;ok()};
+    r.onerror=e=>er(e.target.error);
+  });
+}
+const os=(s,m='readonly')=>db.transaction(s,m).objectStore(s);
+function getAll(s){return new Promise((ok,er)=>{const r=os(s).getAll();r.onsuccess=e=>ok(e.target.result||[]);r.onerror=e=>er(e.target.error)})}
+function put(s,o){return new Promise((ok,er)=>{const r=os(s,'readwrite').put(o);r.onsuccess=e=>ok(e.target.result);r.onerror=e=>er(e.target.error)})}
+function del(s,id){return new Promise((ok,er)=>{const r=os(s,'readwrite').delete(id);r.onsuccess=ok;r.onerror=e=>er(e.target.error)})}
+function clr(s){return new Promise((ok,er)=>{const r=os(s,'readwrite').clear();r.onsuccess=ok;r.onerror=e=>er(e.target.error)})}
+function bulkPut(s,rows){return new Promise((ok,er)=>{const t=db.transaction(s,'readwrite'),o=t.objectStore(s);rows.forEach(r=>o.put(r));t.oncomplete=ok;t.onerror=e=>er(e.target.error)})}
+async function getMeta(k){return new Promise(ok=>{const r=os('meta').get(k);r.onsuccess=e=>ok(e.target.result?.value||null);r.onerror=()=>ok(null)})}
+async function setMeta(k,v){return put('meta',{key:k,value:v})}
+
+// ═══════════════════════════════════
+// AUTH
+// ═══════════════════════════════════
+function doLogin(n,r){
+  user={n,r};localStorage.setItem('a6u',JSON.stringify(user));
+  g('loginScr').style.display='none';g('app').style.display='flex';
+  boot();
+}
+function doLogout(){localStorage.removeItem('a6u');location.reload()}
+
+// ═══════════════════════════════════
+// BOOT
+// ═══════════════════════════════════
+async function boot(){
+  buildPicker();
+  await renderDash();
+  await loadDates();
+  await checkAlerts();
+  showPicker(true);
+}
+
+// ═══════════════════════════════════
+// PICKER
+// ═══════════════════════════════════
+function buildPicker(){
+  g('plist').innerHTML=SRVS.map(s=>`<div class="pli" onclick="openSrv('${s.id}')"><span>${s.ico}</span>${s.lb}</div>`).join('');
+}
+function filtPicker(v){
+  const lv=v.toLowerCase();
+  g('plist').querySelectorAll('.pli').forEach(el=>{el.style.display=!v||el.textContent.toLowerCase().includes(lv)?'':'none'});
+}
+function showPicker(v){
+  g('picker').style.display=v?'block':'none';
+  pickerOn=v;
+  g('btnPick').textContent=v?'✕ Cerrar':'☰ Servicios';
+}
+function togglePicker(){showPicker(!pickerOn)}
+
+// ═══════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════
+async function renderDash(){
+  try{
+    const[eqs,exs,ors]=await Promise.all([getAll('equipos'),getAll('expedientes'),getAll('ordenes')]);
+    const hoy=today();
+    let html='';
+    SRVS.forEach(srv=>{
+      const se=eqs.filter(e=>mSrv(e.servicio,srv.id));
+      const sx=exs.filter(e=>mSrv(e.servicio,srv.id));
+      const so=ors.filter(e=>mSrv(e.servicio,srv.id));
+      let al=0,wn=0;
+      se.forEach(e=>{const d=diff(hoy,toD(e.proximoMant));if(d!==null&&d<0)al++;else if(d!==null&&d<30)wn++;});
+      const cls=al?'al':wn?'wn':'';
+      html+=`<div class="sc ${cls}" onclick="openSrv('${srv.id}')">
+        <div class="ico">${srv.ico}</div><h3>${srv.lb}</h3>
+        <div class="cnts">
+          <span class="bx baz">${se.length} eq.</span>
+          ${al?`<span class="bx bro">⚠${al}</span>`:''}
+          ${wn?`<span class="bx bna">⏰${wn}</span>`:''}
+          ${sx.length?`<span class="bx bdim">${sx.length} exp</span>`:''}
+          ${so.length?`<span class="bx bdim">${so.length} ord</span>`:''}
+        </div></div>`;
+    });
+    if(!eqs.length&&!exs.length)html+=`<div style="grid-column:1/-1"><div class="emp"><div class="ei">📂</div>Sin datos cargados.<br>Ir a <b>⚙️</b> para importar los Excel.</div></div>`;
+    g('dash').innerHTML=html;
+  }catch(e){g('dash').innerHTML=`<div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div>`}
+}
+
+// ═══════════════════════════════════
+// SERVICE
+// ═══════════════════════════════════
+function openSrv(id){
+  const s=SRVS.find(x=>x.id===id);if(!s)return;
+  curSrv=id;curTab=0;
+  hideAll();show('srvView');showPicker(false);
+  g('srvIco').textContent=s.ico;
+  g('srvNm').textContent=s.lb;
+  buildTabs();
+}
+
+function buildTabs(){
+  g('tabs').innerHTML=TABS.map((t,i)=>`<button class="tb ${i===curTab?'on':''}" onclick="switchTab(${i},'${t.id}')">${t.lb}</button>`).join('');
+  doTab(TABS[curTab].id);
+}
+function switchTab(i,id){
+  curTab=i;
+  g('tabs').querySelectorAll('.tb').forEach((b,j)=>b.classList.toggle('on',i===j));
+  doTab(id);
+}
+async function doTab(type){
+  const tc=g('tcont');
+  tc.innerHTML=`<div style="color:var(--dim);font-size:.76rem;padding:.4rem">Cargando...</div>`;
+  try{
+    if(type==='equipos')     await tabEq(tc);
+    else if(type==='expedientes') await tabEx(tc);
+    else if(type==='ordenes')     await tabOr(tc);
+    else if(type==='actas')       await tabAc(tc);
+    else if(type==='tareas')      await tabTa(tc);
+    else if(type==='bajas')       await tabBa(tc);
+  }catch(e){tc.innerHTML=`<div class="emp"><div class="ei">⚠️</div>Error cargando: ${e.message}</div>`}
+}
+
+// ── EQUIPOS ──
+async function tabEq(tc){
+  const all=await getAll('equipos');
+  const rows=all.filter(e=>mSrv(e.servicio,curSrv));
+  const hoy=today();
+  if(!rows.length){
+    tc.innerHTML=`<div class="tbar"><button class="btn baz2" onclick="openForm('equipo')">+ Agregar equipo</button></div>
+    <div class="emp"><div class="ei">🩺</div>Sin equipos en este servicio.<br>Importá <b>equipos.xlsx</b> desde ⚙️ Admin.</div>`;return;
+  }
+  tc.innerHTML=`
+    <div class="tbar">
+      <button class="btn baz2" onclick="openForm('equipo')">+ Agregar</button>
+      <div class="sp"></div><span class="bx baz" style="font-size:.68rem">${rows.length} equipos</span>
+    </div>
+    <div class="tbar"><input class="fi" type="text" placeholder="Buscar descripción, serie, marca..." oninput="ft('eqT',this.value)"></div>
+    <div class="tw"><table id="eqT">
+      <thead><tr><th>Equipo</th><th>Marca</th><th>Serie</th><th>Sub-Serv.</th><th>Estado</th><th>Próx.Mant</th><th>Días</th><th></th></tr></thead>
+      <tbody>${rows.map(e=>{
+        const pd=toD(e.proximoMant),d=diff(hoy,pd);
+        return`<tr>
+          <td><b style="font-size:.71rem">${es(e.descrip)}</b></td>
+          <td style="font-size:.66rem">${es(e.marca)}</td>
+          <td style="font-size:.63rem;color:var(--dim)">${es(e.serie)}</td>
+          <td style="font-size:.63rem">${es(e.subServicio)}</td>
+          <td>${pill(e.estado,'eq')}</td>
+          <td style="font-size:.65rem">${fd(pd)}</td>
+          <td>${dchip(d)}</td>
+          <td><div class="arow">
+            <button class="ab" onclick="editR('equipo',${e.id})">✏️</button>
+            <button class="ab" onclick="delR('equipo',${e.id})">🗑</button>
+          </div></td>
+        </tr>`;
+      }).join('')}
+      </tbody></table></div>`;
+}
+
+// ── EXPEDIENTES ──
+async function tabEx(tc){
+  const all=await getAll('expedientes');
+  const rows=all.filter(e=>mSrv(e.servicio,curSrv));
+  const hoy=today();
+  const tr=rows.filter(e=>!e.estado||e.estado==='En Trámite'||e.estado==='');
+  const ap=rows.filter(e=>e.estado==='Aprobado');
+  const ot=rows.filter(e=>e.estado&&e.estado!=='En Trámite'&&e.estado!=='Aprobado'&&e.estado!=='');
+  tc.innerHTML=`
+    <div class="tbar">
+      <button class="btn baz2" onclick="openForm('expediente')">+ Agregar</button>
+      <div class="sp"></div>
+      <span class="bx bna" style="font-size:.66rem">${tr.length} trámite</span>
+      <span class="bx" style="font-size:.66rem;background:rgba(46,125,50,.2);color:#81c784;border:1px solid var(--ve)">${ap.length} aprobados</span>
+    </div>
+    ${exS('⏳ En Trámite / RIC55',tr,hoy)}
+    ${ap.length?exS('✅ Aprobados',ap,hoy):''}
+    ${ot.length?exS('📁 Otros',ot,hoy):''}
+    ${!rows.length?`<div class="emp"><div class="ei">📁</div>Sin expedientes. Importá <b>expe.xlsx</b>.</div>`:''}`;
+}
+function exS(t,rows,hoy){
+  if(!rows.length)return`<div class="stitle">${t}: sin registros</div>`;
+  return`<div class="stitle">${t}</div>
+    <div class="tw" style="margin-bottom:.5rem"><table>
+    <thead><tr><th>N° Exp.</th><th>Descripción</th><th>Inicio</th><th>Días</th><th>Estado</th><th>Resp.</th><th></th></tr></thead>
+    <tbody>${rows.map(e=>{
+      const fi=toD(e.fechaInicio),d=diff(fi,hoy);
+      return`<tr>
+        <td><b>${es(e.numero)}</b></td>
+        <td style="max-width:150px;font-size:.68rem">${es(e.descripcion)}</td>
+        <td style="font-size:.65rem">${fd(fi)}</td>
+        <td><span class="dc" style="background:rgba(0,151,167,.14);color:#4dd0e1">${d!==null?d+'d':'—'}</span></td>
+        <td>${pill(e.estado,'ex')}</td>
+        <td style="font-size:.63rem">${es(e.responsable)}</td>
+        <td><div class="arow">
+          <button class="ab" onclick="editR('expediente',${e.id})">✏️</button>
+          <button class="ab" onclick="delR('expediente',${e.id})">🗑</button>
+        </div></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+// ── ÓRDENES ──
+async function tabOr(tc){
+  const all=await getAll('ordenes');
+  const rows=all.filter(e=>mSrv(e.servicio,curSrv));
+  const hoy=today();
+  if(!rows.length){
+    tc.innerHTML=`<div class="tbar"><button class="btn baz2" onclick="openForm('orden')">+ Agregar</button></div>
+    <div class="emp"><div class="ei">📋</div>Sin órdenes. Importá <b>orden.xlsx</b>.</div>`;return;
+  }
+  tc.innerHTML=`
+    <div class="tbar">
+      <button class="btn baz2" onclick="openForm('orden')">+ Agregar</button>
+      <div class="sp"></div><span class="bx baz" style="font-size:.66rem">${rows.length}</span>
+    </div>
+    <div class="tbar"><input class="fi" type="text" placeholder="Buscar N° o descripción..." oninput="ft('orT',this.value)"></div>
+    <div class="tw"><table id="orT">
+    <thead><tr><th>N° Orden</th><th>Descripción</th><th>Inicio</th><th>Días</th><th>Estado</th><th>Resp.</th><th></th></tr></thead>
+    <tbody>${rows.map(o=>{
+      const fi=toD(o.fechaInicio),d=diff(fi,hoy);
+      return`<tr>
+        <td><b>${es(o.numero)}</b></td>
+        <td style="max-width:150px;font-size:.68rem">${es(o.descripcion)}</td>
+        <td style="font-size:.65rem">${fd(fi)}</td>
+        <td><span class="dc" style="background:rgba(245,124,0,.14);color:#ffb74d">${d!==null?d+'d':'—'}</span></td>
+        <td>${pill(o.estado,'or')}</td>
+        <td style="font-size:.63rem">${es(o.responsable)}</td>
+        <td><div class="arow">
+          <button class="ab" onclick="editR('orden',${o.id})">✏️</button>
+          <button class="ab" onclick="delR('orden',${o.id})">🗑</button>
+        </div></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+// ── ACTAS ──
+async function tabAc(tc){
+  const all=await getAll('actas');
+  const rows=all.filter(e=>mSrv(e.servicio,curSrv));
+  tc.innerHTML=`
+    <div class="tbar">
+      <button class="btn baz2" onclick="openForm('acta')">+ Nueva Acta</button>
+      <div class="sp"></div><span class="bx baz" style="font-size:.66rem">${rows.length}</span>
+    </div>
+    ${!rows.length?`<div class="emp"><div class="ei">📄</div>Sin actas registradas.</div>`:`
+    <div class="tw"><table>
+    <thead><tr><th>Equipo</th><th>Tipo</th><th>Destino</th><th>Nota</th><th>Fecha</th><th></th></tr></thead>
+    <tbody>${rows.map(a=>`<tr>
+      <td><b style="font-size:.7rem">${es(a.equipo)}</b></td>
+      <td><span class="pill pin">${es(a.tipo)}</span></td>
+      <td style="font-size:.66rem">${es(a.destino)}</td>
+      <td style="font-size:.65rem;max-width:130px">${es(a.descripcion)}</td>
+      <td style="font-size:.63rem">${a.fecha||'—'}</td>
+      <td><button class="ab" onclick="delR('acta',${a.id})">🗑</button></td>
+    </tr>`).join('')}</tbody></table></div>`}`;
+}
+
+// ── TAREAS ──
+async function tabTa(tc){
+  const all=await getAll('tareas');
+  const rows=all.filter(e=>mSrv(e.servicio,curSrv));
+  tc.innerHTML=`
+    <div class="tbar">
+      <button class="btn baz2" onclick="openForm('tarea')">+ Nueva Tarea</button>
+      <div class="sp"></div><span class="bx baz" style="font-size:.66rem">${rows.length}</span>
+    </div>
+    ${!rows.length?`<div class="emp"><div class="ei">✅</div>Sin tareas registradas.</div>`:`
+    <div class="tw"><table>
+    <thead><tr><th>Descripción</th><th>SKINET</th><th>Fecha</th><th>Usuario</th><th></th></tr></thead>
+    <tbody>${rows.map(t=>`<tr>
+      <td style="font-size:.7rem;max-width:200px">${es(t.descripcion)}</td>
+      <td>${t.skinet?'<span class="pill pok">✓ Registrado</span>':'<span class="pill pwn">⚠ Pendiente</span>'}</td>
+      <td style="font-size:.65rem">${t.fecha||'—'}</td>
+      <td style="font-size:.63rem">${es(t.usuario)}</td>
+      <td><div class="arow">
+        <button class="ab" onclick="editR('tarea',${t.id})">✏️</button>
+        <button class="ab" onclick="delR('tarea',${t.id})">🗑</button>
+      </div></td>
+    </tr>`).join('')}</tbody></table></div>`}`;
+}
+
+// ── BAJAS ──
+async function tabBa(tc){
+  const all=await getAll('bajas');
+  const rows=all.filter(e=>mSrv(e.servicio,curSrv));
+  tc.innerHTML=`
+    <div class="tbar">
+      <button class="btn baz2" onclick="openForm('baja')">+ Dar de Baja</button>
+      <div class="sp"></div><span class="bx bro" style="font-size:.66rem">${rows.length}</span>
+    </div>
+    ${!rows.length?`<div class="emp"><div class="ei">🗑️</div>Sin bajas registradas.</div>`:`
+    <div class="tw"><table>
+    <thead><tr><th>Equipo</th><th>Motivo</th><th>Descripción</th><th>Fecha</th><th></th></tr></thead>
+    <tbody>${rows.map(b=>`<tr>
+      <td><b style="font-size:.7rem">${es(b.equipo)}</b></td>
+      <td><span class="pill pal">${es(b.motivo)}</span></td>
+      <td style="font-size:.67rem;max-width:160px">${es(b.descripcion)}</td>
+      <td style="font-size:.63rem">${b.fecha||'—'}</td>
+      <td><button class="ab" onclick="delR('baja',${b.id})">🗑</button></td>
+    </tr>`).join('')}</tbody></table></div>`}`;
+}
+
+// Filter table rows live
+function ft(id,v){
+  const tbl=document.getElementById(id);if(!tbl)return;
+  const lv=v.toLowerCase();
+  tbl.querySelectorAll('tbody tr').forEach(tr=>{tr.style.display=!v||tr.textContent.toLowerCase().includes(lv)?'':'none'});
+}
+// Search across current tab
+let stTimer=null;
+function tabSearch(v){
+  clearTimeout(stTimer);
+  stTimer=setTimeout(()=>{
+    ['eqT','orT'].forEach(id=>ft(id,v));
+  },200);
+}
+
+// ═══════════════════════════════════
+// STOCK
+// ═══════════════════════════════════
+async function showStock(){
+  hideAll();show('stockPanel');showPicker(false);
+  await renderStock('');
+}
+async function renderStock(f=''){
+  const all=await getAll('stock');
+  const rows=f?all.filter(s=>(s.descrip||'').toLowerCase().includes(f.toLowerCase())):all;
+  const el=g('stkCont');
+  if(!rows.length){el.innerHTML=`<div class="emp"><div class="ei">📦</div>${f?'Sin coincidencias':'Sin stock. Importá <b>Stock_actual.xlsx</b>'}</div>`;return}
+  el.innerHTML=`<div class="sg">${rows.map(s=>{
+    const c=Number(s.stock)||0,cls=c<=0?'zr':c<=2?'lw':'';
+    return`<div class="si ${cls}">
+      <h4>${es(s.descrip)}</h4>
+      <div class="sn2">
+        <span style="color:var(--dim)">In:</span><span style="font-weight:700">${s.cantIn||0}</span>
+        <span style="color:var(--dim)">Out:</span><span style="font-weight:700">${s.cantOut||0}</span>
+        <span style="color:var(--dim)">Stk:</span><span style="font-weight:700;color:${c<=0?'var(--ro)':c<=2?'var(--na)':'var(--ve2)'}">${c}</span>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ═══════════════════════════════════
+// ADMIN
+// ═══════════════════════════════════
+async function showAdmin(){
+  hideAll();show('adminPanel');showPicker(false);
+  g('prev').style.display='none';
+  await loadDates();
+}
+async function loadDates(){
+  try{
+    const[eq,ex,or,st]=await Promise.all(['eq','ex','or','st'].map(k=>getMeta('lu_'+k)));
+    const f=v=>v?`Importado: ${v}`:'Sin datos';
+    g('luEq').textContent=f(eq);g('luEx').textContent=f(ex);g('luOr').textContent=f(or);g('luSt').textContent=f(st);
+  }catch(e){}
+}
+function dov(e,el){e.preventDefault();el.classList.add('drag')}
+function dlv(el){el.classList.remove('drag')}
+function ddf(e,k){e.preventDefault();e.currentTarget.classList.remove('drag');const f=e.dataTransfer?.files?.[0];if(f)procFile(f,k)}
+function loadXLS(inp,k){const f=inp.files?.[0];if(f)procFile(f,k);inp.value=''}
+
+function procFile(file,k){
+  if(!file.name.endsWith('.xlsx')){toast('Solo .xlsx','er');return}
+  const rd=new FileReader();
+  rd.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const raw=XLSX.utils.sheet_to_json(ws,{raw:false,dateNF:'yyyy-mm-dd'});
+      if(!raw.length){toast('Archivo vacío','er');return}
+      const parsed=parseXLS(k,raw);
+      if(!parsed.length){toast('No se reconocieron columnas. Verificá el archivo.','er');return}
+      pending={k,data:parsed};
+      showPrev(k,parsed);
+    }catch(er){toast('Error: '+er.message,'er')}
+  };
+  rd.readAsArrayBuffer(file);
+}
+
+function rv(r,...keys){for(const k of keys){if(r[k]!==undefined&&r[k]!==null&&String(r[k]).trim()!=='')return String(r[k]).trim()}return''}
+
+function parseXLS(k,rows){
+  const now=new Date().toLocaleDateString('es-AR'),u=user?.n||'';
+  switch(k){
+    case'eq':return rows.map((r,i)=>({
+      id:Date.now()+i,
+      descrip:   rv(r,'Descrip','DESCRIP','descrip'),
+      marca:     rv(r,'Marca - Modelo','Marca-Modelo','Marca','marca'),
+      serie:     rv(r,'Nº Serie','N° Serie','Serie','serie'),
+      servicio:  nSrv(rv(r,'Servicio','SERVICIO','servicio')),
+      subServicio:rv(r,'Sub Servicio','Sub servicio','subServicio'),
+      area:      rv(r,'Area','AREA')||'AREA 6',
+      estado:    rv(r,'Estado','ESTADO')||'En Servicio',
+      ultimoMant:rv(r,'Ultimo Mantenimiento','Ultimo Mantemiento','ultimoMant'),
+      periodo:   rv(r,'Periodo','periodo'),
+      proximoMant:rv(r,'Proximo Mantenimiento','Próximo Mantenimiento','proximoMant'),
+      fechaAlta:  rv(r,'Fecha Alta','fechaAlta'),
+      usuario:u,importado:now
+    })).filter(r=>r.descrip);
+
+    case'ex':return rows.map((r,i)=>({
+      id:Date.now()+i,
+      servicio:   nSrv(rv(r,'Servicio','SERVICIO')),
+      numero:     rv(r,'N° Expediente','N Expediente','numero'),
+      fechaInicio:rv(r,'Fecha de Inicio','Fecha Inicio','fechaInicio'),
+      descripcion:rv(r,'Descripcion','Descripción','descripcion'),
+      estado:     rv(r,'Estado','ESTADO')||'En Trámite',
+      responsable:rv(r,'Responsable','responsable'),
+      usuario:u,importado:now
+    })).filter(r=>r.numero);
+
+    case'or':return rows.map((r,i)=>({
+      id:Date.now()+i,
+      servicio:   nSrv(rv(r,'Servicio','SERVICIO')),
+      numero:     rv(r,'N° Orden','N Orden','numero'),
+      fechaInicio:rv(r,'Fecha de Inicio','Fecha Inicio','fechaInicio'),
+      descripcion:rv(r,'Descripcion','Descripción','descripcion'),
+      estado:     rv(r,'Estado','ESTADO')||'Iniciada',
+      responsable:rv(r,'Responsable','responsable'),
+      usuario:u,importado:now
+    })).filter(r=>r.numero);
+
+    case'st':return rows.map((r,i)=>({
+      id:Date.now()+i,
+      area:   rv(r,'Area','AREA')||'AREA 6',
+      descrip:rv(r,'Descrip','DESCRIP','descrip'),
+      cantIn: Number(rv(r,'SumaDeCantidad_in','Cantidad_in')||0),
+      cantOut:Number(rv(r,'SumaDeCantidad_out','Cantidad_out')||0),
+      stock:  Number(rv(r,'Stock','stock')||0),
+      usuario:u,importado:now
+    })).filter(r=>r.descrip);
+
+    default:return[];
+  }
+}
+
+const KL={eq:'🩺 Equipos',ex:'📁 Expedientes',or:'📋 Órdenes',st:'📦 Stock'};
+const KS={eq:'equipos',ex:'expedientes',or:'ordenes',st:'stock'};
+const KC={eq:['descrip','marca','serie','servicio','estado','proximoMant'],ex:['numero','servicio','descripcion','estado'],or:['numero','servicio','descripcion','estado'],st:['descrip','stock','cantIn','cantOut']};
+
+function showPrev(k,data){
+  g('prevTit').textContent=`Vista previa · ${KL[k]} · ${data.length} registros`;
+  let st=[`<div class="ps">Total: <b>${data.length}</b></div>`];
+  if(k==='eq'){const sv=[...new Set(data.map(r=>r.servicio).filter(Boolean))];st.push(`<div class="ps">Servicios: <b>${sv.length}</b></div>`)}
+  if(k==='st'){st.push(`<div class="ps">Con stock: <b>${data.filter(r=>r.stock>0).length}</b></div>`)}
+  g('prevSt').innerHTML=st.join('');
+  const cols=KC[k]||[],prows=data.slice(0,8);
+  g('prevTbl').innerHTML=`<div style="font-size:.65rem;color:var(--dim);margin-bottom:.25rem">Primeros ${prows.length} de ${data.length}</div>
+    <table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+    <tbody>${prows.map(r=>`<tr>${cols.map(c=>`<td style="font-size:.66rem;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r[c]||'—'}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  g('prev').style.display='block';
+  g('prev').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+async function doImport(){
+  if(!pending.k)return;
+  const{k,data}=pending;
+  await clr(KS[k]);
+  await bulkPut(KS[k],data);
+  await setMeta('lu_'+k,new Date().toLocaleString('es-AR'));
+  toast(`✅ ${data.length} registros importados`,'ok');
+  pending={};g('prev').style.display='none';
+  await loadDates();await renderDash();
+}
+function cancelPrev(){pending={};g('prev').style.display='none'}
+
+async function dbSt(){
+  const cnts=await Promise.all(STORES.filter(s=>s!=='meta').map(async s=>{const r=await getAll(s);return`<b>${s}</b>:${r.length}`}));
+  g('dbSC').innerHTML=cnts.join(' · ');
+}
+function clearAll(){
+  cfm2('⚠️ ¿Borrar TODOS los datos locales?\nNo se puede deshacer.',async()=>{
+    await Promise.all(STORES.map(s=>clr(s)));toast('Datos borrados','ok');await renderDash();
+  });
+}
+
+// ═══════════════════════════════════
+// FORM PANEL
+// ═══════════════════════════════════
+async function openForm(type,data=null){
+  fmType=type;fmMode=data?'edit':'new';fmId=data?.id||null;
+  const d=data||{};
+  const srv=d.servicio||curSrv||'';
+  const sOpts=SRVS.map(s=>`<option value="${s.id}" ${nSrv(s.id)===nSrv(srv)?'selected':''}>${s.ico} ${s.lb}</option>`).join('');
+  const TITLES={equipo:'🩺 Equipo',expediente:'📁 Expediente/RIC55',orden:'📋 Orden de Trabajo',acta:'📄 Acta',tarea:'✅ Tarea RIC01',baja:'🗑️ Baja RIC44',stock:'📦 Stock'};
+  g('fptit').textContent=(data?'Editar ':'Nuevo ')+TITLES[type];
+  let html='';
+  switch(type){
+    case'equipo':{
+      const eqs=await getAll('equipos');
+      const eSrv=eqs.filter(e=>mSrv(e.servicio,curSrv));
+      html=`
+        ${eSrv.length&&!data?`<div class="fg"><label>Copiar datos de equipo existente</label>
+          <select onchange="fillEq(this.value)"><option value="">— Equipo nuevo —</option>
+          ${eSrv.map(e=>`<option value="${e.id}">${es(e.descrip)} | S/N: ${es(e.serie)}</option>`).join('')}</select></div>`:''}
+        <div class="fg"><label>Descripción *</label><input id="fD" value="${es(d.descrip)}"></div>
+        <div class="fg"><label>Marca / Modelo</label><input id="fM" value="${es(d.marca)}"></div>
+        <div class="fg"><label>N° de Serie</label><input id="fSer" value="${es(d.serie)}"></div>
+        <div class="fg"><label>Servicio</label><select id="fSrv">${sOpts}</select></div>
+        <div class="fg"><label>Sub Servicio</label><input id="fSS" value="${es(d.subServicio)}"></div>
+        <div class="fg"><label>Estado</label><select id="fEst">${EST_EQ.map(s=>`<option ${d.estado===s?'selected':''}>${s}</option>`).join('')}</select></div>
+        <div class="fg"><label>Último Mantenimiento</label><input id="fUM" type="date" value="${dv(d.ultimoMant)}"></div>
+        <div class="fg"><label>Próximo Mantenimiento</label><input id="fPM" type="date" value="${dv(d.proximoMant)}"></div>
+        <div class="fg"><label>Período (días)</label><input id="fPer" type="number" value="${d.periodo||''}"></div>`;
+      break;}
+    case'expediente':
+      html=`
+        <div class="fg"><label>N° Expediente *</label><input id="fNum" value="${es(d.numero)}"></div>
+        <div class="fg"><label>Servicio</label><select id="fSrv">${sOpts}</select></div>
+        <div class="fg"><label>Descripción *</label><textarea id="fDesc">${es(d.descripcion)}</textarea></div>
+        <div class="fg"><label>Fecha de Inicio</label><input id="fFI" type="date" value="${dv(d.fechaInicio)}"></div>
+        <div class="fg"><label>Estado</label><select id="fEst">${EST_EX.map(s=>`<option ${d.estado===s?'selected':''}>${s}</option>`).join('')}</select></div>
+        <div class="fg"><label>Responsable</label><input id="fResp" value="${es(d.responsable||user?.n)}"></div>`;
+      break;
+    case'orden':
+      html=`
+        <div class="fg"><label>N° Orden *</label><input id="fNum" value="${es(d.numero)}"></div>
+        <div class="fg"><label>Servicio</label><select id="fSrv">${sOpts}</select></div>
+        <div class="fg"><label>Descripción *</label><textarea id="fDesc">${es(d.descripcion)}</textarea></div>
+        <div class="fg"><label>Fecha de Inicio</label><input id="fFI" type="date" value="${dv(d.fechaInicio)}"></div>
+        <div class="fg"><label>Estado</label><select id="fEst">${EST_OR.map(s=>`<option ${d.estado===s?'selected':''}>${s}</option>`).join('')}</select></div>
+        <div class="fg"><label>Responsable</label><input id="fResp" value="${es(d.responsable||user?.n)}"></div>`;
+      break;
+    case'acta':{
+      const eqsA=await getAll('equipos');
+      const eqsAS=eqsA.filter(e=>mSrv(e.servicio,curSrv));
+      html=`
+        <div class="fg"><label>Equipo *</label>
+          ${eqsAS.length?`<select id="fEq"><option value="">— Seleccioná —</option>${eqsAS.map(e=>`<option value="${es(e.descrip)}">${es(e.descrip)} · ${es(e.serie)}</option>`).join('')}</select>`
+          :`<input id="fEq" value="${es(d.equipo)}" placeholder="Nombre del equipo">`}
+        </div>
+        <div class="fg"><label>Tipo de Movimiento</label><select id="fTipo">${TIPOS_A.map(t=>`<option ${d.tipo===t?'selected':''}>${t}</option>`).join('')}</select></div>
+        <div class="fg"><label>Destino / Origen</label><input id="fDest" value="${es(d.destino)}"></div>
+        <div class="fg"><label>Observaciones</label><textarea id="fDesc">${es(d.descripcion)}</textarea></div>`;
+      break;}
+    case'tarea':
+      html=`
+        <div class="fg"><label>Descripción *</label><textarea id="fDesc">${es(d.descripcion)}</textarea></div>
+        <div class="fg"><label>Registrado en SKINET</label>
+          <select id="fSk"><option value="0" ${!d.skinet?'selected':''}>⚠ No (Pendiente)</option><option value="1" ${d.skinet?'selected':''}>✓ Sí (Registrado)</option></select></div>`;
+      break;
+    case'baja':{
+      const eqsB=await getAll('equipos');
+      const eqsBS=eqsB.filter(e=>mSrv(e.servicio,curSrv));
+      html=`
+        <div class="fg"><label>Equipo *</label>
+          ${eqsBS.length?`<select id="fEq"><option value="">— Seleccioná —</option>${eqsBS.map(e=>`<option value="${es(e.descrip)}">${es(e.descrip)} · ${es(e.serie)}</option>`).join('')}</select>`
+          :`<input id="fEq" value="${es(d.equipo)}" placeholder="Nombre del equipo">`}
+        </div>
+        <div class="fg"><label>Motivo</label><select id="fMot">${MOTIVOS.map(m=>`<option ${d.motivo===m?'selected':''}>${m}</option>`).join('')}</select></div>
+        <div class="fg"><label>Observaciones</label><textarea id="fDesc">${es(d.descripcion)}</textarea></div>`;
+      break;}
+    case'stock':
+      html=`
+        <div class="fg"><label>Descripción *</label><input id="fD" value="${es(d.descrip)}"></div>
+        <div class="fg"><label>Stock actual</label><input id="fSt" type="number" value="${d.stock||0}"></div>
+        <div class="fg"><label>Entradas</label><input id="fIn" type="number" value="${d.cantIn||0}"></div>
+        <div class="fg"><label>Salidas</label><input id="fOut" type="number" value="${d.cantOut||0}"></div>`;
+      break;
+  }
+  g('fpbody').innerHTML=html;
+  g('fp').classList.add('open');
+}
+
+async function fillEq(id){
+  if(!id)return;
+  const eqs=await getAll('equipos');
+  const e=eqs.find(r=>r.id===Number(id));if(!e)return;
+  const sv=x=>{const el=document.getElementById(x);if(el)el.value=''};
+  const s=(x,v)=>{const el=document.getElementById(x);if(el)el.value=v||''};
+  s('fD',e.descrip);s('fM',e.marca);s('fSer',e.serie);s('fSS',e.subServicio);
+  s('fUM',dv(e.ultimoMant));s('fPM',dv(e.proximoMant));s('fPer',e.periodo);
+  const est=document.getElementById('fEst');if(est)est.value=e.estado||'En Servicio';
+  fmId=e.id;fmMode='edit';
+}
+
+async function saveForm(){
+  const hoy=new Date().toLocaleDateString('es-AR'),u=user?.n||'';
+  const gv=id=>{const el=document.getElementById(id);return el?el.value.trim():''};
+  let obj={},store='';
+  try{
+    switch(fmType){
+      case'equipo':{const d=gv('fD');if(!d){toast('Descripción requerida','er');return}
+        obj={descrip:d,marca:gv('fM'),serie:gv('fSer'),servicio:gv('fSrv'),subServicio:gv('fSS'),
+             estado:gv('fEst'),ultimoMant:gv('fUM'),proximoMant:gv('fPM'),periodo:gv('fPer'),area:'AREA 6'};
+        store='equipos';break;}
+      case'expediente':{const n=gv('fNum');if(!n){toast('N° requerido','er');return}
+        obj={numero:n,servicio:gv('fSrv'),descripcion:gv('fDesc'),fechaInicio:gv('fFI'),estado:gv('fEst'),responsable:gv('fResp')};
+        store='expedientes';break;}
+      case'orden':{const n=gv('fNum');if(!n){toast('N° requerido','er');return}
+        obj={numero:n,servicio:gv('fSrv'),descripcion:gv('fDesc'),fechaInicio:gv('fFI'),estado:gv('fEst'),responsable:gv('fResp')};
+        store='ordenes';break;}
+      case'acta':{const eq=gv('fEq');if(!eq){toast('Equipo requerido','er');return}
+        obj={equipo:eq,tipo:gv('fTipo'),destino:gv('fDest'),descripcion:gv('fDesc'),servicio:curSrv,fecha:hoy};
+        store='actas';break;}
+      case'tarea':{const td=gv('fDesc');if(!td){toast('Descripción requerida','er');return}
+        obj={descripcion:td,skinet:gv('fSk')==='1',servicio:curSrv,fecha:hoy};
+        store='tareas';break;}
+      case'baja':{const eq=gv('fEq');if(!eq){toast('Equipo requerido','er');return}
+        obj={equipo:eq,motivo:gv('fMot'),descripcion:gv('fDesc'),servicio:curSrv,fecha:hoy};
+        store='bajas';break;}
+      case'stock':{const d=gv('fD');if(!d){toast('Descripción requerida','er');return}
+        obj={descrip:d,stock:Number(gv('fSt')||0),cantIn:Number(gv('fIn')||0),cantOut:Number(gv('fOut')||0),area:'AREA 6'};
+        store='stock';break;}
+    }
+    obj.usuario=u;obj.mod=hoy;
+    obj.id=(fmMode==='edit'&&fmId)?fmId:Date.now();
+    await put(store,obj);
+    closeForm();toast('Guardado ✓','ok');
+    await refreshView();
+  }catch(e){toast('Error: '+e.message,'er')}
+}
+
+function closeForm(){g('fp').classList.remove('open');g('fpbody').innerHTML=''}
+
+async function editR(type,id){
+  const sm={equipo:'equipos',expediente:'expedientes',orden:'ordenes',acta:'actas',tarea:'tareas',baja:'bajas'};
+  const all=await getAll(sm[type]);
+  const item=all.find(r=>r.id===id);
+  if(item)openForm(type,item);
+}
+async function delR(type,id){
+  const sm={equipo:'equipos',expediente:'expedientes',orden:'ordenes',acta:'actas',tarea:'tareas',baja:'bajas'};
+  cfm2('¿Eliminar este registro?',async()=>{await del(sm[type],id);toast('Eliminado','ok');await refreshView()});
+}
+
+async function refreshView(){
+  if(curSrv)buildTabs();
+  const sp=g('stockPanel');if(sp&&sp.style.display==='block')await renderStock('');
+  await renderDash();
+}
+
+// ═══════════════════════════════════
+// ALERTS
+// ═══════════════════════════════════
+async function checkAlerts(){
+  try{
+    const eqs=await getAll('equipos');
+    const hoy=today();
+    const vn=eqs.filter(e=>{const d=diff(hoy,toD(e.proximoMant));return d!==null&&d<0});
+    const pr=eqs.filter(e=>{const d=diff(hoy,toD(e.proximoMant));return d!==null&&d>=0&&d<30});
+    const b=g('alertBan');
+    if(vn.length||pr.length){
+      b.style.display='block';
+      b.innerHTML=`⚠️ <b>${vn.length} equipos</b> con mantenimiento VENCIDO · <b>${pr.length}</b> vencen en &lt;30 días`;
+    }else{b.style.display='none'}
+  }catch(e){}
+}
+
+// ═══════════════════════════════════
+// NAV
+// ═══════════════════════════════════
+function goHome(){
+  hideAll();show('dash');showPicker(true);curSrv=null;
+  renderDash();checkAlerts();
+}
+
+// ═══════════════════════════════════
+// CONFIRM
+// ═══════════════════════════════════
+function cfm2(msg,cb){
+  g('cfmMsg').textContent=msg;g('cfm').classList.add('on');
+  g('cfmOk').onclick=()=>{closeCfm();cb()};
+}
+function closeCfm(){g('cfm').classList.remove('on')}
+
+// ═══════════════════════════════════
+// TOAST
+// ═══════════════════════════════════
+function toast(msg,type='ok'){
+  const el=document.createElement('div');
+  el.className=`tm ${type}`;el.textContent=msg;
+  g('tst').appendChild(el);
+  setTimeout(()=>el.remove(),2600);
+}
+
+// ═══════════════════════════════════
+// UTILS
+// ═══════════════════════════════════
+const g=id=>document.getElementById(id);
+function show(id){const el=g(id);if(el)el.style.display='block'}
+function hide(id){const el=g(id);if(el)el.style.display='none'}
+function hideAll(){['dash','srvView','stockPanel','adminPanel'].forEach(hide)}
+
+function es(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function today(){const d=new Date();d.setHours(0,0,0,0);return d}
+
+function toD(v){
+  if(!v)return null;
+  if(v instanceof Date)return isNaN(v)?null:v;
+  if(typeof v==='string'){
+    let s=v.trim();
+    if(s.includes('/')){const p=s.split('/');if(p.length===3)s=`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`}
+    const d=new Date(s);return isNaN(d)?null:d;
+  }
+  return null;
+}
+function fd(d){if(!d)return'—';const dt=d instanceof Date?d:toD(d);if(!dt)return'—';return dt.toLocaleDateString('es-AR')}
+function dv(v){const d=toD(v);if(!d)return'';try{return d.toISOString().split('T')[0]}catch{return''}}
+function diff(a,b){
+  if(!a||!b)return null;
+  const da=a instanceof Date?a:toD(a),db=b instanceof Date?b:toD(b);
+  if(!da||!db)return null;
+  return Math.round((db-da)/864e5);
+}
+function dchip(d){
+  if(d===null)return'<span style="color:var(--dim);font-size:.65rem">—</span>';
+  if(d<0)return`<span class="dc" style="background:rgba(229,57,53,.2);color:#ff8a8a">${d}d</span>`;
+  if(d<30)return`<span class="dc" style="background:rgba(245,124,0,.2);color:#ffb74d">${d}d</span>`;
+  return`<span class="dc" style="background:rgba(46,125,50,.14);color:#81c784">${d}d</span>`;
+}
+function pill(v,t){
+  if(!v)return'<span class="pill pdim">—</span>';
+  const lv=v.toLowerCase();
+  if(t==='eq'){
+    if(lv==='en servicio')return`<span class="pill pok">${v}</span>`;
+    if(lv.includes('fabrica')||lv.includes('repuesto'))return`<span class="pill pwn">${v}</span>`;
+    if(lv.includes('deposito'))return`<span class="pill pin">${v}</span>`;
+    return`<span class="pill pdim">${v}</span>`;
+  }
+  if(t==='ex'){
+    if(lv==='aprobado')return`<span class="pill pok">${v}</span>`;
+    if(lv.includes('trámite')||lv==='')return`<span class="pill pwn">En Trámite</span>`;
+    if(lv==='archivado')return`<span class="pill pdim">${v}</span>`;
+    return`<span class="pill pin">${v}</span>`;
+  }
+  if(t==='or'){
+    if(lv==='completada')return`<span class="pill pok">${v}</span>`;
+    if(lv==='iniciada')return`<span class="pill pwn">${v}</span>`;
+    if(lv==='en proceso')return`<span class="pill pin">${v}</span>`;
+    if(lv==='cancelada')return`<span class="pill pal">${v}</span>`;
+    return`<span class="pill pdim">${v}</span>`;
+  }
+  return`<span class="pill pdim">${v}</span>`;
+}
+
+function nSrv(s){
+  const u=(s||'').trim().toUpperCase();
+  if(GASTRO.includes(u))return'GASTROENTEROLOGIA';
+  const map={'PROCURACIÓN':'PROCURACION','HEMATOLOGÍA Y HEMOTERAPIA':'HEMATOLOGIA Y HEMOTERAPIA','NEUROCIRUGÍA':'NEUROCIRUGIA','NEUROLOGÍA':'NEUROLOGIA','ANATOMÍA PATOLÓGICA':'ANATOMIA PATOLOGICA'};
+  return map[u]||u;
+}
+function mSrv(a,b){return nSrv(a)===nSrv(b)}
+
+// ═══════════════════════════════════
+// STARTUP
+// ═══════════════════════════════════
+(async()=>{
+  try{
+    await openDB();
+    const saved=localStorage.getItem('a6u');
+    if(saved){
+      user=JSON.parse(saved);
+      g('loginScr').style.display='none';
+      g('app').style.display='flex';
+      await boot();
+    }
+  }catch(e){
+    document.body.innerHTML=`<div style="color:#ff8a8a;padding:1.5rem;font-size:.82rem;max-width:400px;margin:auto;margin-top:3rem">
+      <b>⚠️ Error de inicio:</b> ${e.message}<br><br>
+      El archivo debe abrirse desde un servidor web (GitHub + Vercel), no directamente desde Descargas.
+    </div>`;
+  }
+})();
+</script>
+</body>
+</html>
