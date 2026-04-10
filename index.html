@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<meta name="theme-color" content="#d32f2f">
+<meta name="theme-color" content="#003d82">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ÁREA 6">
 <link rel="manifest" id="mfst">
@@ -11,198 +11,221 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
-  --az:#003d82;--az2:#0056b3;
-  --bg:#0a0a14;--s1:#161628;--s2:#1e1e36;--s3:#252545;--s4:#2e2e52;
-  --txt:#e8eaff;--dim:#7878a0;--brd:#2a2a4a;
-  --ro:#e53935;--na:#f57c00;--ve:#2e7d32;--ve2:#43a047;--cy:#0097a7;--pu:#7b1fa2;
-  --sh:0 4px 20px rgba(0,0,0,.5);--r:10px;
+  --az:#003d82;--az2:#0056b3;--az3:#e8f0fe;
+  --bg:#f0f2f8;--s1:#fff;--s2:#f8f9ff;--s3:#eef0f8;
+  --txt:#1a1a2e;--dim:#6b7280;--brd:#dde1f0;
+  --ro:#d32f2f;--roli:#fff0f0;--roba:#ffd5d5;
+  --na:#e65100;--nali:#fff8f0;--naba:#ffd9b3;
+  --ve:#1b5e20;--veli:#f0fff4;--veba:#b3f0c0;--ve2:#2e7d32;
+  --cy:#006064;--pu:#6a1b9a;
+  --sh:0 2px 8px rgba(0,0,0,.1);--sh2:0 4px 16px rgba(0,0,0,.15);
+  --r:14px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--txt);overflow:hidden}
 ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:var(--az);border-radius:3px}
 
-/* LOGIN */
-#loginScr{position:fixed;inset:0;background:linear-gradient(160deg,var(--bg) 0%,#0a001a 60%,#001030 100%);display:flex;align-items:center;justify-content:center;z-index:999}
-.lbox{background:var(--s2);border:1px solid var(--brd);border-radius:18px;padding:2rem 1.5rem;width:min(340px,94vw);box-shadow:var(--sh)}
+/* ── LOGIN ── */
+#loginScr{position:fixed;inset:0;background:linear-gradient(160deg,var(--az) 0%,#0056b3 100%);display:flex;align-items:center;justify-content:center;z-index:999}
+.lbox{background:#fff;border-radius:20px;padding:2rem 1.6rem;width:min(340px,94vw);box-shadow:0 8px 32px rgba(0,0,0,.25)}
 .llogo{text-align:center;margin-bottom:1.5rem}
-.lbig{width:72px;height:72px;background:#d32f2f;border-radius:14px;display:inline-flex;align-items:center;justify-content:center;font-size:1.7rem;font-weight:900;box-shadow:0 0 32px rgba(211,47,47,.5);color:#fff}
-.llogo h2{margin-top:.6rem;font-size:1rem;color:var(--dim)}
+.lbig{width:72px;height:72px;background:var(--az);border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:1.7rem;font-weight:900;color:#fff;box-shadow:0 4px 16px rgba(0,61,130,.4)}
+.llogo h2{margin-top:.7rem;font-size:1rem;color:var(--dim)}
 .llogo p{font-size:.72rem;color:var(--dim)}
-.ubtn{width:100%;padding:.85rem 1rem;background:var(--s3);border:1px solid var(--brd);border-radius:var(--r);color:var(--txt);font-size:.9rem;cursor:pointer;margin-bottom:.5rem;display:flex;align-items:center;gap:.7rem;transition:all .2s;text-align:left}
-.ubtn:hover,.ubtn:active{background:var(--az);border-color:var(--az2)}
-.av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.82rem;flex-shrink:0}
+.ubtn{width:100%;padding:.85rem 1rem;background:var(--s2);border:1.5px solid var(--brd);border-radius:12px;color:var(--txt);font-size:.9rem;cursor:pointer;margin-bottom:.5rem;display:flex;align-items:center;gap:.7rem;transition:all .2s;text-align:left}
+.ubtn:hover,.ubtn:active{background:var(--az3);border-color:var(--az)}
+.av{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.82rem;flex-shrink:0}
 
-/* APP */
+/* ── APP ── */
 #app{display:none;flex-direction:column;height:100dvh}
 
-/* HEADER */
-#hdr{background:var(--s1);border-bottom:2px solid #d32f2f;padding:.4rem .6rem;display:flex;align-items:center;gap:.45rem;flex-shrink:0;min-height:48px}
-.hlogo{width:34px;height:34px;background:#d32f2f;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.78rem;flex-shrink:0;color:#fff}
-.htit{font-size:.76rem;font-weight:700;line-height:1.2;flex-shrink:0}
-.htit small{color:var(--dim);font-weight:400;font-size:.64rem;display:block}
+/* ── HEADER ── */
+#hdr{background:var(--az);padding:.45rem .7rem;display:flex;align-items:center;gap:.5rem;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.hlogo{width:36px;height:36px;background:rgba(255,255,255,.2);border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.82rem;flex-shrink:0;color:#fff;border:1.5px solid rgba(255,255,255,.35)}
+.htit{font-size:.78rem;font-weight:700;line-height:1.2;flex-shrink:0;color:#fff}
+.htit small{color:rgba(255,255,255,.75);font-weight:400;font-size:.64rem;display:block}
 .hsp{flex:1}
-.hib{background:var(--s3);border:1px solid var(--brd);color:var(--txt);border-radius:6px;padding:.28rem .45rem;cursor:pointer;font-size:.76rem;flex-shrink:0;transition:background .15s;line-height:1.3}
-.hib:hover,.hib:active{background:var(--az)}
+.hib{background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:.3rem .5rem;cursor:pointer;font-size:.8rem;flex-shrink:0;transition:background .15s}
+.hib:hover,.hib:active{background:rgba(255,255,255,.3)}
 
-/* MAIN */
-#main{flex:1;overflow-y:auto;overflow-x:hidden;padding:.6rem;-webkit-overflow-scrolling:touch}
+/* ── MAIN ── */
+#main{flex:1;overflow-y:auto;overflow-x:hidden;padding:.7rem;-webkit-overflow-scrolling:touch}
 
-/* ALERT */
-#alertBan{background:rgba(229,57,53,.1);border:1px solid rgba(229,57,53,.35);border-radius:8px;padding:.45rem .7rem;margin-bottom:.5rem;font-size:.72rem;color:#ff8a8a;display:none}
-#skBan{background:rgba(245,124,0,.1);border:1px solid rgba(245,124,0,.35);border-radius:8px;padding:.45rem .7rem;margin-bottom:.5rem;font-size:.72rem;color:#ffb74d;display:none}
+/* ── ALERTS ── */
+#alertBan{background:var(--roli);border:1.5px solid var(--roba);border-radius:10px;padding:.5rem .8rem;margin-bottom:.6rem;font-size:.74rem;color:var(--ro);display:none;font-weight:600}
 
-/* PICKER */
-#picker{background:var(--s2);border:1px solid var(--brd);border-radius:12px;padding:.8rem;margin-bottom:.7rem;display:none}
-#picker h3{font-size:.78rem;color:var(--dim);margin-bottom:.5rem;text-align:center}
-#psrch{width:100%;background:var(--s3);border:1px solid var(--brd);color:var(--txt);border-radius:8px;padding:.55rem .7rem;font-size:.88rem;margin-bottom:.5rem}
-#psrch::placeholder{color:var(--dim)}
-#plist{display:grid;grid-template-columns:1fr 1fr;gap:.35rem;max-height:220px;overflow-y:auto}
-.pli{background:var(--s3);border:1px solid var(--brd);border-radius:8px;padding:.55rem .6rem;cursor:pointer;display:flex;align-items:center;gap:.4rem;font-size:.75rem;font-weight:600;transition:all .15s}
-.pli:hover,.pli:active{background:var(--az);border-color:var(--az2)}
-
-/* DASHBOARD — always grid */
-#dash{display:grid;grid-template-columns:repeat(2,1fr);gap:.55rem}
-.sc{background:var(--s2);border:1px solid var(--brd);border-radius:var(--r);padding:.8rem .65rem;cursor:pointer;transition:all .18s;position:relative;overflow:hidden}
-.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--az)}
-.sc.al::before{background:var(--ro)}.sc.wn::before{background:var(--na)}
-.sc:active{transform:scale(.97)}
-.sc .ico{font-size:1.4rem;margin-bottom:.3rem}
-.sc h3{font-size:.7rem;font-weight:700;line-height:1.3;margin-bottom:.4rem}
+/* ── DASHBOARD ── */
+#dash{display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem}
+.sc{background:var(--s1);border:1.5px solid var(--brd);border-radius:var(--r);padding:1rem .8rem;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;box-shadow:var(--sh)}
+.sc:active{transform:scale(.97);box-shadow:none}
+/* top indicator strip */
+.sc .strip{position:absolute;top:0;left:0;right:0;height:4px;border-radius:var(--r) var(--r) 0 0}
+.sc.ok .strip{background:var(--ve2)}
+.sc.al .strip{background:var(--ro)}
+.sc.wn .strip{background:var(--na)}
+/* status label */
+.sc .stlbl{font-size:.62rem;font-weight:700;margin-bottom:.35rem}
+.sc.ok .stlbl{color:var(--ve2)}
+.sc.al .stlbl{color:var(--ro)}
+.sc.wn .stlbl{color:var(--na)}
+.sc .ico{font-size:1.5rem;margin-bottom:.3rem}
+.sc h3{font-size:.72rem;font-weight:700;line-height:1.3;margin-bottom:.45rem;color:var(--txt)}
 .sc .cnts{display:flex;gap:.3rem;flex-wrap:wrap}
-.bx{border-radius:20px;padding:.12rem .42rem;font-size:.6rem;font-weight:700}
-.baz{background:rgba(0,61,130,.35);color:#7eb3ff;border:1px solid #003d82}
-.bro{background:rgba(229,57,53,.2);color:#ff8a8a;border:1px solid var(--ro)}
-.bna{background:rgba(245,124,0,.2);color:#ffb74d;border:1px solid var(--na)}
-.bgr2{background:rgba(46,125,50,.2);color:#81c784;border:1px solid var(--ve)}
-.bdim{background:rgba(120,120,160,.1);color:var(--dim);border:1px solid var(--s4)}
-.bpu{background:rgba(123,31,162,.2);color:#ce93d8;border:1px solid var(--pu)}
+.bx{border-radius:20px;padding:.13rem .45rem;font-size:.6rem;font-weight:700}
+.baz{background:var(--az3);color:var(--az);border:1px solid #b3c8f8}
+.bro{background:var(--roli);color:var(--ro);border:1px solid var(--roba)}
+.bna{background:var(--nali);color:var(--na);border:1px solid var(--naba)}
+.bgr2{background:var(--veli);color:var(--ve2);border:1px solid var(--veba)}
+.bdim{background:var(--s3);color:var(--dim);border:1px solid var(--brd)}
+.bpu{background:#f3e5ff;color:var(--pu);border:1px solid #d7b3f8}
 
-/* SERVICE VIEW */
+/* ── SERVICE HEADER ── */
 #srvView{display:none;flex-direction:column;height:100%}
-#srvHdr{display:flex;align-items:center;gap:.45rem;margin-bottom:.5rem;flex-shrink:0;flex-wrap:wrap}
-.back{background:var(--s3);border:1px solid var(--brd);color:var(--txt);border-radius:6px;padding:.3rem .6rem;cursor:pointer;font-size:.74rem}
-.gsrch{background:var(--s3);border:1px solid var(--brd);color:var(--txt);border-radius:6px;padding:.3rem .55rem;font-size:.74rem;width:110px;margin-left:auto}
-.gsrch::placeholder{color:var(--dim)}
+#srvHdr{background:var(--s1);border-bottom:1.5px solid var(--brd);padding:.55rem .7rem;display:flex;align-items:center;gap:.5rem;flex-shrink:0;box-shadow:var(--sh)}
+.back{background:var(--az);color:#fff;border:none;border-radius:8px;padding:.35rem .7rem;cursor:pointer;font-size:.76rem;font-weight:700}
+.back:active{background:var(--az2)}
 
-/* TABS */
-.tabs{display:flex;gap:2px;overflow-x:auto;background:var(--s1);border-radius:8px 8px 0 0;padding:3px 3px 0;border:1px solid var(--brd);border-bottom:none;flex-shrink:0}
-.tabs::-webkit-scrollbar{height:0}
-.tb{padding:.35rem .55rem;background:transparent;border:none;color:var(--dim);font-size:.67rem;cursor:pointer;border-radius:6px 6px 0 0;white-space:nowrap;font-weight:600;transition:all .15s}
-.tb.on{background:var(--s2);color:var(--txt);border:1px solid var(--brd);border-bottom:1px solid var(--s2)}
-.tcont{background:var(--s2);border:1px solid var(--brd);border-radius:0 var(--r) var(--r) var(--r);padding:.6rem;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+/* ── MODULE CARDS (service home) ── */
+#modGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:.55rem;padding:.7rem;flex-shrink:0}
+.mcard{background:var(--s1);border:1.5px solid var(--brd);border-radius:var(--r);padding:.9rem .75rem;cursor:pointer;transition:all .2s;box-shadow:var(--sh);position:relative;overflow:hidden}
+.mcard:active{transform:scale(.97)}
+.mcard .mtop{height:3px;position:absolute;top:0;left:0;right:0;border-radius:var(--r) var(--r) 0 0}
+.mcard .mico{font-size:1.6rem;margin-bottom:.3rem}
+.mcard h4{font-size:.75rem;font-weight:700;color:var(--txt);margin-bottom:.3rem}
+.mcard .mcnt{font-size:.65rem;color:var(--dim)}
+.mcard.active-mod{border-color:var(--az);background:var(--az3)}
+.mcard.active-mod h4{color:var(--az)}
+/* module colors */
+.mcard.mt .mtop{background:#7c3aed}
+.mcard.me .mtop{background:var(--az)}
+.mcard.mx .mtop{background:var(--na)}
+.mcard.mo .mtop{background:#0891b2}
+.mcard.ma .mtop{background:#059669}
+.mcard.mb .mtop{background:var(--ro)}
 
-/* TOOLBAR */
-.tbar{display:flex;gap:.35rem;margin-bottom:.5rem;flex-wrap:wrap;align-items:center}
-.btn{border:none;border-radius:6px;padding:.35rem .65rem;font-size:.74rem;cursor:pointer;font-weight:700;display:inline-flex;align-items:center;gap:.25rem;transition:all .15s}
+/* ── CONTENT AREA ── */
+#modContent{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:.7rem;border-top:1.5px solid var(--brd);background:var(--bg)}
+
+/* ── TOOLBAR ── */
+.tbar{display:flex;gap:.4rem;margin-bottom:.55rem;flex-wrap:wrap;align-items:center}
+.btn{border:none;border-radius:8px;padding:.38rem .7rem;font-size:.76rem;cursor:pointer;font-weight:700;display:inline-flex;align-items:center;gap:.25rem;transition:all .15s}
 .baz2{background:var(--az);color:#fff}.baz2:active{background:var(--az2)}
-.bgr{background:var(--s3);color:var(--txt);border:1px solid var(--brd)}.bgr:active{background:var(--s4)}
-.bro2{background:rgba(229,57,53,.2);color:#ff8a8a;border:1px solid var(--ro)}.bro2:active{background:var(--ro);color:#fff}
-.bna2{background:rgba(245,124,0,.2);color:#ffb74d;border:1px solid var(--na)}.bna2:active{background:var(--na);color:#fff}
+.bgr{background:var(--s1);color:var(--txt);border:1.5px solid var(--brd)}.bgr:active{background:var(--s3)}
+.bro2{background:var(--roli);color:var(--ro);border:1.5px solid var(--roba)}.bro2:active{background:var(--roba)}
+.bna2{background:var(--nali);color:var(--na);border:1.5px solid var(--naba)}
 .sp{flex:1}
-.fi{flex:1;background:var(--s3);border:1px solid var(--brd);color:var(--txt);border-radius:6px;padding:.38rem .55rem;font-size:.76rem}
+.fi{flex:1;background:var(--s1);border:1.5px solid var(--brd);color:var(--txt);border-radius:8px;padding:.4rem .6rem;font-size:.78rem}
 .fi::placeholder{color:var(--dim)}
 
-/* TYPE FILTER BAR */
+/* ── TASK FILTER ── */
 .tfilter{display:flex;gap:.3rem;margin-bottom:.5rem;flex-wrap:wrap}
-.tfb{background:var(--s3);border:1px solid var(--brd);color:var(--dim);border-radius:20px;padding:.22rem .6rem;font-size:.68rem;cursor:pointer;font-weight:600;transition:all .15s}
-.tfb.on{color:#fff;border-color:transparent}
-.tfb.on.az{background:var(--az)}.tfb.on.na{background:var(--na)}.tfb.on.ve{background:var(--ve2)}.tfb.on.cy{background:var(--cy)}.tfb.on.pu{background:var(--pu)}
+.tfb{background:var(--s1);border:1.5px solid var(--brd);color:var(--dim);border-radius:20px;padding:.22rem .65rem;font-size:.68rem;cursor:pointer;font-weight:600;transition:all .15s}
+.tfb.on.t-all{background:var(--az);color:#fff;border-color:var(--az)}
+.tfb.on.t-ta{background:#7c3aed;color:#fff;border-color:#7c3aed}
+.tfb.on.t-co{background:var(--na);color:#fff;border-color:var(--na)}
+.tfb.on.t-ri{background:var(--ve2);color:#fff;border-color:var(--ve2)}
 
-/* TABLE */
-.tw{overflow-x:auto;border-radius:8px;border:1px solid var(--brd);-webkit-overflow-scrolling:touch}
-table{width:100%;border-collapse:collapse;font-size:.7rem}
-thead th{background:var(--s3);color:var(--dim);padding:.4rem .55rem;text-align:left;font-weight:700;white-space:nowrap;border-bottom:1px solid var(--brd)}
-tbody tr{border-bottom:1px solid rgba(42,42,74,.4)}
-tbody tr:hover{background:rgba(37,37,69,.5)}
-td{padding:.4rem .55rem;vertical-align:middle}
-.nd{text-align:center;padding:1.6rem;color:var(--dim);font-style:italic;font-size:.76rem}
-.pill{border-radius:20px;padding:.13rem .45rem;font-size:.6rem;font-weight:700}
-.pok{background:rgba(46,125,50,.2);color:#81c784}
-.pwn{background:rgba(245,124,0,.2);color:#ffb74d}
-.pal{background:rgba(229,57,53,.2);color:#ff8a8a}
-.pin{background:rgba(0,151,167,.2);color:#4dd0e1}
-.ppu{background:rgba(123,31,162,.2);color:#ce93d8}
-.pdim{background:rgba(120,120,160,.12);color:var(--dim)}
-.dc{border-radius:20px;padding:.12rem .42rem;font-size:.6rem;font-weight:700;display:inline-block}
+/* ── TASK CARDS ── */
+.tcard{background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:.7rem .8rem;margin-bottom:.4rem;display:flex;align-items:flex-start;gap:.6rem;box-shadow:var(--sh)}
+.tcard.ct{border-left:4px solid var(--na)}
+.tcard.cr{border-left:4px solid var(--ve2)}
+.tcard.cg{border-left:4px solid #7c3aed}
+.tcard.co{border-left:4px solid var(--dim)}
+.tcBody{flex:1;min-width:0}
+.tcBody p{font-size:.78rem;line-height:1.4;color:var(--txt)}
+.tcBody .tmeta{font-size:.63rem;color:var(--dim);margin-top:.25rem}
+.tcAct{display:flex;flex-direction:column;gap:.25rem;flex-shrink:0}
+
+/* ── PILL/BADGE ── */
+.pill{border-radius:20px;padding:.14rem .48rem;font-size:.61rem;font-weight:700}
+.pok{background:var(--veli);color:var(--ve2);border:1px solid var(--veba)}
+.pwn{background:var(--nali);color:var(--na);border:1px solid var(--naba)}
+.pal{background:var(--roli);color:var(--ro);border:1px solid var(--roba)}
+.pin{background:#e0f7fa;color:var(--cy);border:1px solid #b2ebf2}
+.ppu{background:#f3e5ff;color:var(--pu);border:1px solid #d7b3f8}
+.pdim{background:var(--s3);color:var(--dim);border:1px solid var(--brd)}
+.dc{border-radius:20px;padding:.13rem .44rem;font-size:.6rem;font-weight:700;display:inline-block}
+
+/* ── TABLE ── */
+.tw{overflow-x:auto;border-radius:10px;border:1.5px solid var(--brd);-webkit-overflow-scrolling:touch;box-shadow:var(--sh)}
+table{width:100%;border-collapse:collapse;font-size:.72rem}
+thead th{background:var(--s3);color:var(--dim);padding:.42rem .55rem;text-align:left;font-weight:700;white-space:nowrap;border-bottom:1.5px solid var(--brd)}
+tbody tr{border-bottom:1px solid var(--brd);background:var(--s1)}
+tbody tr:hover{background:var(--az3)}
+td{padding:.42rem .55rem;vertical-align:middle;color:var(--txt)}
+.nd{text-align:center;padding:1.8rem;color:var(--dim);font-size:.78rem}
 .arow{display:flex;gap:.25rem}
-.ab{background:var(--s3);border:1px solid var(--brd);color:var(--txt);border-radius:5px;padding:.18rem .38rem;cursor:pointer;font-size:.65rem}
-.ab:active{background:var(--az)}
+.ab{background:var(--s2);border:1.5px solid var(--brd);color:var(--dim);border-radius:6px;padding:.2rem .42rem;cursor:pointer;font-size:.65rem}
+.ab:hover{background:var(--az3);color:var(--az);border-color:var(--az)}
+.tipo-h{background:var(--az3);color:var(--az);border:1px solid #b3c8f8;border-radius:20px;padding:.1rem .38rem;font-size:.58rem;font-weight:700}
+.tipo-c{background:#f3e5ff;color:var(--pu);border:1px solid #d7b3f8;border-radius:20px;padding:.1rem .38rem;font-size:.58rem;font-weight:700}
 
-/* TIPO BADGE (equipment) */
-.tipo-h{background:rgba(0,61,130,.3);color:#7eb3ff;border:1px solid var(--az);border-radius:20px;padding:.1rem .38rem;font-size:.58rem;font-weight:700}
-.tipo-c{background:rgba(123,31,162,.3);color:#ce93d8;border:1px solid var(--pu);border-radius:20px;padding:.1rem .38rem;font-size:.58rem;font-weight:700}
+/* ── EMPTY ── */
+.emp{background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:1.6rem;text-align:center;color:var(--dim);font-size:.78rem;line-height:1.5}
+.emp .ei{font-size:2rem;margin-bottom:.4rem}
+.stitle{font-size:.71rem;font-weight:700;color:var(--dim);margin:.6rem 0 .3rem;text-transform:uppercase;letter-spacing:.03em}
+.infobx{background:#e8f5e9;border:1.5px solid #b3f0c0;border-radius:8px;padding:.5rem .7rem;font-size:.71rem;color:var(--ve);margin-top:.6rem}
+.warnbx{background:var(--nali);border:1.5px solid var(--naba);border-radius:8px;padding:.5rem .7rem;font-size:.71rem;color:var(--na);margin-top:.6rem}
 
-/* EMPTY */
-.emp{background:var(--s3);border-radius:8px;padding:1.4rem;text-align:center;color:var(--dim);font-size:.76rem;line-height:1.5}
-.emp .ei{font-size:1.8rem;margin-bottom:.35rem}
-.stitle{font-size:.7rem;font-weight:700;color:var(--dim);margin:.5rem 0 .3rem}
+/* ── STOCK ── */
+#stockPanel{display:none}
+.sg{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:.45rem}
+.si{background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:.65rem;box-shadow:var(--sh)}
+.si.ok-s{border-left:4px solid var(--ve2)}
+.si.lw{border-left:4px solid var(--na)}
+.si.zr{border-left:4px solid var(--ro)}
+.si h4{font-size:.73rem;font-weight:700;margin-bottom:.3rem;line-height:1.3;color:var(--txt)}
+.si .sn2{display:flex;gap:.4rem;font-size:.66rem;flex-wrap:wrap;color:var(--dim)}
+.si .sn2 b{color:var(--txt)}
 
-/* TASK CARD (list style for tareas) */
-.tcard{background:var(--s3);border:1px solid var(--brd);border-radius:8px;padding:.65rem .75rem;margin-bottom:.4rem;display:flex;align-items:flex-start;gap:.6rem}
-.tcard.ct{border-left:3px solid var(--na)}
-.tcard.cr{border-left:3px solid var(--ve2)}
-.tcard.cg{border-left:3px solid var(--cy)}
-.tcard.co{border-left:3px solid var(--dim)}
-.tcardBody{flex:1;min-width:0}
-.tcardBody p{font-size:.75rem;line-height:1.4;word-break:break-word}
-.tcardBody .tmeta{font-size:.64rem;color:var(--dim);margin-top:.25rem}
-.tcardAct{display:flex;flex-direction:column;gap:.25rem;flex-shrink:0}
+/* ── ADMIN ── */
+#adminPanel{display:none}
+.ig{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:.8rem}
+@media(min-width:460px){.ig{grid-template-columns:repeat(4,1fr)}}
+.ic{background:var(--s1);border:1.5px solid var(--brd);border-radius:var(--r);padding:.85rem .75rem;box-shadow:var(--sh)}
+.ic h4{font-size:.77rem;font-weight:700;margin-bottom:.22rem;color:var(--txt)}
+.ilu{font-size:.63rem;color:var(--dim);margin-bottom:.55rem;min-height:.9rem}
+.drop{border:2px dashed var(--brd);border-radius:10px;padding:.8rem;text-align:center;cursor:pointer;position:relative;transition:all .2s;background:var(--s2)}
+.drop:hover,.drop.drag{border-color:var(--az);background:var(--az3)}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop .di{font-size:1.3rem}.drop p{font-size:.66rem;color:var(--dim);margin-top:.15rem}
+.icols{font-size:.61rem;color:var(--dim);margin-top:.35rem;line-height:1.5}
+#prev{background:var(--s1);border:1.5px solid var(--brd);border-radius:var(--r);padding:.85rem;margin-top:.7rem;display:none;box-shadow:var(--sh)}
+#prev h4{font-size:.82rem;font-weight:700;margin-bottom:.45rem;color:var(--txt)}
+.pss{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem}
+.ps{background:var(--s2);border:1px solid var(--brd);border-radius:6px;padding:.32rem .58rem;font-size:.71rem;color:var(--txt)}
+.ps b{color:var(--az)}
+.merge-row{background:var(--nali);border:1px solid var(--naba);border-radius:6px;padding:.38rem .6rem;font-size:.7rem;color:var(--na);margin-bottom:.3rem;display:flex;align-items:center;gap:.4rem}
 
-/* FORM PANEL */
-#fp{position:fixed;left:0;right:0;bottom:0;background:var(--s1);border-top:2px solid var(--az);border-radius:16px 16px 0 0;z-index:400;transform:translateY(100%);transition:transform .28s ease;max-height:88dvh;display:flex;flex-direction:column;box-shadow:0 -8px 30px rgba(0,0,0,.6)}
+/* ── FORM PANEL ── */
+#fp{position:fixed;left:0;right:0;bottom:0;background:var(--s1);border-top:2px solid var(--az);border-radius:18px 18px 0 0;z-index:400;transform:translateY(100%);transition:transform .28s ease;max-height:88dvh;display:flex;flex-direction:column;box-shadow:0 -6px 24px rgba(0,0,0,.15)}
 #fp.open{transform:translateY(0)}
-#fphdr{padding:.7rem .9rem .45rem;display:flex;align-items:center;flex-shrink:0;border-bottom:1px solid var(--brd)}
-#fptit{font-size:.85rem;font-weight:700;flex:1}
-#fpx{background:var(--s3);border:1px solid var(--brd);color:var(--txt);border-radius:5px;padding:.25rem .5rem;cursor:pointer;font-size:.78rem}
-#fpbody{padding:.7rem .9rem;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
-#fpfoot{padding:.5rem .9rem;display:flex;gap:.4rem;justify-content:flex-end;border-top:1px solid var(--brd);flex-shrink:0}
-.fg{margin-bottom:.65rem}
-.fg label{display:block;font-size:.7rem;color:var(--dim);margin-bottom:.22rem;font-weight:600}
-.fg input,.fg select,.fg textarea{width:100%;background:var(--s3);border:1px solid var(--brd);color:var(--txt);border-radius:6px;padding:.45rem .6rem;font-size:.82rem;font-family:inherit}
-.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--az2)}
-.fg textarea{resize:vertical;min-height:60px}
+#fphdr{padding:.75rem 1rem .5rem;display:flex;align-items:center;flex-shrink:0;border-bottom:1.5px solid var(--brd)}
+#fptit{font-size:.88rem;font-weight:700;flex:1;color:var(--txt)}
+#fpx{background:var(--s3);border:1.5px solid var(--brd);color:var(--dim);border-radius:6px;padding:.25rem .5rem;cursor:pointer;font-size:.82rem}
+#fpbody{padding:.75rem 1rem;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+#fpfoot{padding:.55rem 1rem;display:flex;gap:.45rem;justify-content:flex-end;border-top:1.5px solid var(--brd);flex-shrink:0}
+.fg{margin-bottom:.7rem}
+.fg label{display:block;font-size:.71rem;color:var(--dim);margin-bottom:.25rem;font-weight:600}
+.fg input,.fg select,.fg textarea{width:100%;background:var(--s2);border:1.5px solid var(--brd);color:var(--txt);border-radius:8px;padding:.48rem .65rem;font-size:.84rem;font-family:inherit}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--az);background:#fff}
+.fg textarea{resize:vertical;min-height:65px}
 .fg2{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
 
-/* STOCK */
-#stockPanel{display:none}
-.sg{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:.45rem;margin-top:.4rem}
-.si{background:var(--s2);border-radius:8px;padding:.6rem;border-left:3px solid var(--ve2)}
-.si.lw{border-color:var(--na)}.si.zr{border-color:var(--ro)}
-.si h4{font-size:.72rem;font-weight:700;margin-bottom:.3rem;line-height:1.3}
-.si .sn2{display:flex;gap:.4rem;font-size:.65rem;flex-wrap:wrap}
-
-/* ADMIN */
-#adminPanel{display:none}
-.ig{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.7rem}
-@media(min-width:460px){.ig{grid-template-columns:repeat(4,1fr)}}
-.ic{background:var(--s2);border:1px solid var(--brd);border-radius:var(--r);padding:.8rem .7rem}
-.ic h4{font-size:.76rem;font-weight:700;margin-bottom:.22rem}
-.ilu{font-size:.63rem;color:var(--dim);margin-bottom:.55rem;min-height:.8rem}
-.drop{border:2px dashed var(--brd);border-radius:8px;padding:.75rem;text-align:center;cursor:pointer;position:relative;transition:all .2s}
-.drop:hover,.drop.drag{border-color:var(--az2);background:rgba(0,86,179,.07)}
-.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.drop .di{font-size:1.2rem}.drop p{font-size:.65rem;color:var(--dim);margin-top:.15rem}
-.icols{font-size:.6rem;color:var(--dim);margin-top:.3rem;line-height:1.4}
-#prev{background:var(--s2);border:1px solid var(--brd);border-radius:var(--r);padding:.8rem;margin-top:.7rem;display:none}
-#prev h4{font-size:.8rem;font-weight:700;margin-bottom:.4rem}
-.pss{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem}
-.ps{background:var(--s3);border-radius:6px;padding:.3rem .55rem;font-size:.7rem}
-.ps b{color:#4dd0e1}
-.merge-row{background:rgba(245,124,0,.08);border:1px solid rgba(245,124,0,.25);border-radius:6px;padding:.4rem .6rem;font-size:.7rem;margin-bottom:.3rem;display:flex;align-items:center;gap:.4rem}
-
-/* CONFIRM */
-#cfm{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:600;display:none;align-items:center;justify-content:center}
+/* ── CONFIRM ── */
+#cfm{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;display:none;align-items:center;justify-content:center;padding:1rem}
 #cfm.on{display:flex}
-.cfb{background:var(--s2);border:1px solid var(--brd);border-radius:var(--r);padding:1.3rem 1.1rem;width:min(310px,92vw);text-align:center;box-shadow:var(--sh)}
-.cfb p{font-size:.84rem;line-height:1.6;margin-bottom:1rem;white-space:pre-line}
+.cfb{background:var(--s1);border-radius:16px;padding:1.4rem 1.2rem;width:min(320px,94vw);text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.cfb p{font-size:.86rem;line-height:1.6;margin-bottom:1.1rem;color:var(--txt);white-space:pre-line}
+.cfb .btns{display:flex;gap:.5rem;justify-content:center}
 
-/* TOAST */
-#tst{position:fixed;bottom:.9rem;left:50%;transform:translateX(-50%);z-index:700;display:flex;flex-direction:column;gap:.3rem;align-items:center;pointer-events:none}
-.tm{background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.45rem .8rem;font-size:.74rem;box-shadow:var(--sh);animation:fi .22s ease;white-space:nowrap;max-width:90vw;text-align:center}
-.tm.ok{border-color:var(--ve2);background:rgba(46,125,50,.15)}
-.tm.er{border-color:var(--ro);background:rgba(229,57,53,.15)}
-.tm.wa{border-color:var(--na);background:rgba(245,124,0,.15)}
-@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+/* ── TOAST ── */
+#tst{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);z-index:700;display:flex;flex-direction:column;gap:.35rem;align-items:center;pointer-events:none}
+.tm{background:#1a1a2e;color:#fff;border-radius:10px;padding:.48rem .85rem;font-size:.76rem;box-shadow:0 4px 16px rgba(0,0,0,.25);animation:fi .22s ease;white-space:nowrap;max-width:92vw;text-align:center}
+.tm.ok{background:var(--ve2)}
+.tm.er{background:var(--ro)}
+.tm.wa{background:var(--na)}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 </style>
 </head>
 <body>
@@ -215,13 +238,13 @@ td{padding:.4rem .55rem;vertical-align:middle}
       <h2>Ingeniería Clínica</h2>
       <p>Hospital Rawson · San Juan</p>
     </div>
-    <p style="font-size:.74rem;color:var(--dim);text-align:center;margin-bottom:.9rem">Seleccioná tu usuario</p>
+    <p style="font-size:.75rem;color:var(--dim);text-align:center;margin-bottom:.9rem">Seleccioná tu usuario</p>
     <button class="ubtn" onclick="doLogin('Pablo Morales','Técnico')">
-      <div class="av" style="background:rgba(0,61,130,.35);color:#7eb3ff">PM</div>
+      <div class="av" style="background:var(--az3);color:var(--az)">PM</div>
       <div><div style="font-weight:700">Pablo Morales</div><div style="font-size:.68rem;color:var(--dim)">Técnico Biomédico</div></div>
     </button>
     <button class="ubtn" onclick="doLogin('Rocío Buenamaizon','Bioingeniera')">
-      <div class="av" style="background:rgba(46,125,50,.35);color:#81c784">RB</div>
+      <div class="av" style="background:var(--veli);color:var(--ve2)">RB</div>
       <div><div style="font-weight:700">Rocío Buenamaizon</div><div style="font-size:.68rem;color:var(--dim)">Bioingeniera</div></div>
     </button>
   </div>
@@ -229,47 +252,80 @@ td{padding:.4rem .55rem;vertical-align:middle}
 
 <!-- APP -->
 <div id="app">
+  <!-- HEADER -->
   <div id="hdr">
     <div class="hlogo">A6</div>
     <div class="htit">ÁREA 6<small>Ing. Clínica · Rawson</small></div>
     <div class="hsp"></div>
-    <button class="hib" id="btnPick" onclick="togglePicker()">☰</button>
-    <button class="hib" onclick="showStock()">📦</button>
-    <button class="hib" onclick="showAdmin()">⚙️</button>
-    <button class="hib" onclick="doLogout()" style="color:#ff8a8a">⏏</button>
+    <button class="hib" onclick="showStock()" title="Stock">📦</button>
+    <button class="hib" onclick="showAdmin()" title="Administración">⚙️</button>
+    <button class="hib" onclick="doLogout()" style="opacity:.85" title="Salir">⏏</button>
   </div>
 
   <div id="main">
     <div id="alertBan"></div>
-    <div id="skBan"></div>
 
-    <!-- PICKER -->
-    <div id="picker">
-      <h3>¿A qué servicio vas?</h3>
-      <input id="psrch" type="text" placeholder="Escribí el nombre..." oninput="filtPicker(this.value)" autocomplete="off">
-      <div id="plist"></div>
-    </div>
-
-    <!-- DASHBOARD -->
-    <div id="dash"></div>
+    <!-- DASHBOARD: solo grilla de servicios -->
+    <div id="dash" style="display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem"></div>
 
     <!-- SERVICE VIEW -->
     <div id="srvView">
+      <!-- Service header + back -->
       <div id="srvHdr">
         <button class="back" onclick="goHome()">← Inicio</button>
-        <span id="srvIco" style="font-size:1.1rem"></span>
-        <strong id="srvNm" style="font-size:.86rem;line-height:1.3;max-width:160px"></strong>
-        <input class="gsrch" type="search" placeholder="🔍 Filtrar..." oninput="tabSearch(this.value)">
+        <span id="srvIco" style="font-size:1.15rem;margin-left:.3rem"></span>
+        <strong id="srvNm" style="font-size:.88rem;color:var(--txt);line-height:1.2;max-width:170px"></strong>
       </div>
-      <div class="tabs" id="tabs"></div>
-      <div class="tcont" id="tcont"></div>
+
+      <!-- Module cards (2 cols) -->
+      <div id="modGrid">
+        <div class="mcard mt" onclick="openMod('tareas')">
+          <div class="mtop"></div>
+          <div class="mico">✅</div>
+          <h4>Tareas / Compras</h4>
+          <div class="mcnt" id="mc-tareas">—</div>
+        </div>
+        <div class="mcard me" onclick="openMod('equipos')">
+          <div class="mtop"></div>
+          <div class="mico">🩺</div>
+          <h4>Equipos</h4>
+          <div class="mcnt" id="mc-equipos">—</div>
+        </div>
+        <div class="mcard mx" onclick="openMod('expedientes')">
+          <div class="mtop"></div>
+          <div class="mico">📁</div>
+          <h4>Expedientes</h4>
+          <div class="mcnt" id="mc-expedientes">—</div>
+        </div>
+        <div class="mcard mo" onclick="openMod('ordenes')">
+          <div class="mtop"></div>
+          <div class="mico">📋</div>
+          <h4>Órdenes</h4>
+          <div class="mcnt" id="mc-ordenes">—</div>
+        </div>
+        <div class="mcard ma" onclick="openMod('actas')">
+          <div class="mtop"></div>
+          <div class="mico">📄</div>
+          <h4>Actas</h4>
+          <div class="mcnt" id="mc-actas">—</div>
+        </div>
+        <div class="mcard mb" onclick="openMod('bajas')">
+          <div class="mtop"></div>
+          <div class="mico">🗑️</div>
+          <h4>Bajas</h4>
+          <div class="mcnt" id="mc-bajas">—</div>
+        </div>
+      </div>
+
+      <!-- Content area (opens below when a module card is tapped) -->
+      <div id="modContent"></div>
     </div>
 
     <!-- STOCK -->
-    <div id="stockPanel">
+    <div id="stockPanel" style="display:none">
       <div class="tbar" style="margin-bottom:.6rem">
         <button class="btn bgr" onclick="goHome()">← Inicio</button>
-        <strong style="font-size:.88rem">📦 Stock · Repuestos</strong>
+        <strong style="font-size:.9rem;color:var(--txt)">📦 Stock · Repuestos</strong>
         <div class="sp"></div>
         <button class="btn baz2" onclick="openForm('stock')">+ Agregar</button>
       </div>
@@ -278,13 +334,13 @@ td{padding:.4rem .55rem;vertical-align:middle}
     </div>
 
     <!-- ADMIN -->
-    <div id="adminPanel">
+    <div id="adminPanel" style="display:none">
       <div class="tbar" style="margin-bottom:.7rem">
         <button class="btn bgr" onclick="goHome()">← Inicio</button>
-        <strong style="font-size:.88rem">⚙️ Importar Excel mensual</strong>
+        <strong style="font-size:.9rem;color:var(--txt)">⚙️ Importar Excel mensual</strong>
       </div>
-      <div style="background:rgba(0,151,167,.07);border:1px solid rgba(0,151,167,.3);border-radius:8px;padding:.6rem .8rem;margin-bottom:.7rem;font-size:.73rem;color:#4dd0e1">
-        📋 Importación inteligente: se comparan los datos existentes con los del Excel y se conserva la versión más actualizada de cada registro. Los registros cargados manualmente en la app se mantienen.
+      <div style="background:#e8f5e9;border:1.5px solid #b3f0c0;border-radius:10px;padding:.6rem .85rem;margin-bottom:.8rem;font-size:.74rem;color:var(--ve)">
+        📋 <b>Importación inteligente:</b> compara datos existentes con el Excel y conserva la versión más actualizada de cada registro.
       </div>
       <div class="ig">
         <div class="ic">
@@ -326,14 +382,14 @@ td{padding:.4rem .55rem;vertical-align:middle}
         <div class="pss" id="prevSt"></div>
         <div id="mergeInfo" style="margin-bottom:.5rem"></div>
         <div class="tw" id="prevTbl"></div>
-        <div style="display:flex;gap:.45rem;margin-top:.6rem">
+        <div style="display:flex;gap:.45rem;margin-top:.65rem">
           <button class="btn baz2" onclick="doImport()">✅ Confirmar importación</button>
           <button class="btn bgr" onclick="cancelPrev()">✕ Cancelar</button>
         </div>
       </div>
 
-      <div style="margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--brd)">
-        <div class="stitle">DATOS LOCALES</div>
+      <div style="margin-top:1.1rem;padding-top:.85rem;border-top:1.5px solid var(--brd)">
+        <div class="stitle">Datos locales</div>
         <div style="display:flex;gap:.45rem;flex-wrap:wrap">
           <button class="btn bgr" onclick="dbSt()">📊 Conteos</button>
           <button class="btn bro2" onclick="clearAll()">🗑️ Borrar todo</button>
@@ -341,11 +397,10 @@ td{padding:.4rem .55rem;vertical-align:middle}
         <div id="dbSC" style="margin-top:.5rem;font-size:.72rem;color:var(--dim)"></div>
       </div>
     </div>
-
   </div>
 </div>
 
-<!-- FORM PANEL (bottom sheet) -->
+<!-- FORM PANEL -->
 <div id="fp">
   <div id="fphdr">
     <div id="fptit">Nuevo registro</div>
@@ -362,7 +417,7 @@ td{padding:.4rem .55rem;vertical-align:middle}
 <div id="cfm">
   <div class="cfb">
     <p id="cfmMsg"></p>
-    <div style="display:flex;gap:.5rem;justify-content:center">
+    <div class="btns">
       <button class="btn bro2" id="cfmOk">Confirmar</button>
       <button class="btn bgr" onclick="closeCfm()">Cancelar</button>
     </div>
@@ -372,10 +427,10 @@ td{padding:.4rem .55rem;vertical-align:middle}
 <div id="tst"></div>
 
 <script>
-// ════════════════════════════════════
+// ════════════════════════════
 // CONSTANTES
-// ════════════════════════════════════
-const SRVS = [
+// ════════════════════════════
+const SRVS=[
   {id:'ANATOMIA PATOLOGICA',       lb:'Anatomía Patológica',     ico:'🔬'},
   {id:'LABORATORIO CENTRAL',       lb:'Laboratorio Central',      ico:'🧪'},
   {id:'HEMATOLOGIA Y HEMOTERAPIA', lb:'Hemoterapia y Hematología',ico:'🩸'},
@@ -387,51 +442,31 @@ const SRVS = [
   {id:'PROCURACION',               lb:'Procuración',              ico:'🏥'},
   {id:'INGENIERIA CLINICA',        lb:'Ingeniería Clínica',       ico:'⚙️'},
 ];
+const GASTRO=['GASTROENTEROLOGIA','ENDOSCOPIA','ENDOSCOPÍA','GASTROENTEROLOGÍA'];
+const EST_EQ =['En Servicio','Rep. en Fabrica','En Deposito IC','Esp. Repuestos','Fuera de Servicio'];
+const EST_EX =['En Trámite','Aprobado','Archivado','Rechazado'];
+const EST_OR =['Iniciada','En Proceso','Completada','Cancelada'];
+const MOTIVOS=['Obsoleto','Rotura Irreparable','Pérdida','Robo','Otro'];
+const TIPOS_A=['Salida','Entrada','Préstamo','Traslado'];
+const TIPOS_T=['Tarea General','Compra','RIC01','Otro'];
+const TIPOS_EQ=['Hospital','Comodato'];
+const DB_NM='A6v5';
+const STORES=['equipos','expedientes','ordenes','actas','tareas','bajas','stock','meta'];
 
-const GASTRO_ALIAS = ['GASTROENTEROLOGIA','ENDOSCOPIA','ENDOSCOPÍA','GASTROENTEROLOGÍA'];
-
-// TABS: Tareas first
-const TABS = [
-  {id:'tareas',      lb:'✅ Tareas'},
-  {id:'equipos',     lb:'🩺 Equipos'},
-  {id:'expedientes', lb:'📁 Expedientes'},
-  {id:'ordenes',     lb:'📋 Órdenes'},
-  {id:'actas',       lb:'📄 Actas'},
-  {id:'bajas',       lb:'🗑️ Bajas'},
-];
-
-const EST_EQ  = ['En Servicio','Rep. en Fabrica','En Deposito IC','Esp. Repuestos','Fuera de Servicio'];
-const EST_EX  = ['En Trámite','Aprobado','Archivado','Rechazado'];
-const EST_OR  = ['Iniciada','En Proceso','Completada','Cancelada'];
-const MOTIVOS = ['Obsoleto','Rotura Irreparable','Pérdida','Robo','Otro'];
-const TIPOS_A = ['Salida','Entrada','Préstamo','Traslado'];
-const TIPOS_T = ['Tarea General','Compra','RIC01','Otro'];
-const TIPOS_EQ= ['Hospital','Comodato'];
-
-const DB_NM   = 'A6v4';
-const STORES  = ['equipos','expedientes','ordenes','actas','tareas','bajas','stock','meta'];
-
-// ════════════════════════════════════
+// ════════════════════════════
 // ESTADO
-// ════════════════════════════════════
-let db, user, curSrv=null, curTab=0;
-let fmType='', fmMode='new', fmId=null;
-let pending={}, pickerOn=false;
-let curTaFilter='all'; // tareas filter
-let skBanMsg = []; // SKINET pending messages
+// ════════════════════════════
+let db,user,curSrv=null,curMod=null,fmType='',fmMode='new',fmId=null,pending={},curTaFil='all';
 
-// ════════════════════════════════════
+// ════════════════════════════
 // INDEXEDDB
-// ════════════════════════════════════
+// ════════════════════════════
 function openDB(){
   return new Promise((ok,er)=>{
     const r=indexedDB.open(DB_NM,1);
     r.onupgradeneeded=e=>{
       const d=e.target.result;
-      STORES.forEach(s=>{
-        if(!d.objectStoreNames.contains(s))
-          d.createObjectStore(s,s==='meta'?{keyPath:'key'}:{keyPath:'id',autoIncrement:true});
-      });
+      STORES.forEach(s=>{if(!d.objectStoreNames.contains(s))d.createObjectStore(s,s==='meta'?{keyPath:'key'}:{keyPath:'id',autoIncrement:true})});
     };
     r.onsuccess=e=>{db=e.target.result;ok()};
     r.onerror=e=>er(e.target.error);
@@ -442,117 +477,52 @@ function getAll(s){return new Promise((ok,er)=>{const r=os(s).getAll();r.onsucce
 function put(s,o){return new Promise((ok,er)=>{const r=os(s,'readwrite').put(o);r.onsuccess=e=>ok(e.target.result);r.onerror=e=>er(e.target.error)})}
 function del(s,id){return new Promise((ok,er)=>{const r=os(s,'readwrite').delete(id);r.onsuccess=ok;r.onerror=e=>er(e.target.error)})}
 function clr(s){return new Promise((ok,er)=>{const r=os(s,'readwrite').clear();r.onsuccess=ok;r.onerror=e=>er(e.target.error)})}
-function bulkPut(s,rows){
-  return new Promise((ok,er)=>{
-    const t=db.transaction(s,'readwrite'),o=t.objectStore(s);
-    rows.forEach(r=>o.put(r));
-    t.oncomplete=ok;t.onerror=e=>er(e.target.error);
-  });
-}
+function bulkPut(s,rows){return new Promise((ok,er)=>{const t=db.transaction(s,'readwrite'),o=t.objectStore(s);rows.forEach(r=>o.put(r));t.oncomplete=ok;t.onerror=e=>er(e.target.error)})}
 async function getMeta(k){return new Promise(ok=>{const r=os('meta').get(k);r.onsuccess=e=>ok(e.target.result?.value||null);r.onerror=()=>ok(null)})}
 async function setMeta(k,v){return put('meta',{key:k,value:v})}
 
-// ════════════════════════════════════
-// PWA: MANIFEST + SERVICE WORKER
-// ════════════════════════════════════
+// ════════════════════════════
+// PWA
+// ════════════════════════════
 function initPWA(){
-  // Icon: red A6 SVG
-  const svg=`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='60' fill='%23d32f2f'/><text x='256' y='370' text-anchor='middle' font-family='Arial Black,Arial' font-weight='900' font-size='290' fill='white'>A6</text></svg>`;
+  const svg=`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='60' fill='%23003d82'/><text x='256' y='375' text-anchor='middle' font-family='Arial Black,Arial' font-weight='900' font-size='290' fill='white'>A6</text></svg>`;
   const iconHref=`data:image/svg+xml,${svg}`;
-
-  const manifest={
-    name:'ÁREA 6 - Ingeniería Clínica',
-    short_name:'ÁREA 6',
-    start_url:'.',
-    display:'standalone',
-    background_color:'#0a0a14',
-    theme_color:'#d32f2f',
-    icons:[{src:iconHref,sizes:'any',type:'image/svg+xml'}]
-  };
+  const manifest={name:'ÁREA 6 - Ingeniería Clínica',short_name:'ÁREA 6',start_url:'.',display:'standalone',background_color:'#f0f2f8',theme_color:'#003d82',icons:[{src:iconHref,sizes:'any',type:'image/svg+xml'}]};
   const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
   document.getElementById('mfst').href=URL.createObjectURL(blob);
-
-  // Apple icon via link tag
-  const lnk=document.createElement('link');
-  lnk.rel='apple-touch-icon';lnk.href=iconHref;
-  document.head.appendChild(lnk);
-
-  // Service Worker for offline
+  const lnk=document.createElement('link');lnk.rel='apple-touch-icon';lnk.href=iconHref;document.head.appendChild(lnk);
   if('serviceWorker' in navigator){
-    const sw=`
-const C='a6v4';
-const FILES=['${location.href}','https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'];
-self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(FILES).catch(()=>{}))));
-self.addEventListener('fetch',e=>e.respondWith(
-  caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{
-    if(res&&res.status===200){const cl=res.clone();caches.open(C).then(ca=>ca.put(e.request,cl))}
-    return res;
-  }).catch(()=>caches.match(e.request)))
-));`;
-    const swBlob=new Blob([sw],{type:'text/javascript'});
-    navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(()=>{});
+    const sw=`const C='a6v5';const F=['${location.href}','https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'];self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(F).catch(()=>{}))));self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{if(res&&res.status===200){const cl=res.clone();caches.open(C).then(ca=>ca.put(e.request,cl))}return res}).catch(()=>caches.match(e.request)))));`;
+    navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'text/javascript'}))).catch(()=>{});
   }
 }
 
-// ════════════════════════════════════
+// ════════════════════════════
 // AUTH
-// ════════════════════════════════════
+// ════════════════════════════
 function doLogin(n,r){
-  user={n,r};
-  localStorage.setItem('a6u',JSON.stringify(user));
+  user={n,r};localStorage.setItem('a6u',JSON.stringify(user));
   g('loginScr').style.display='none';
   g('app').style.display='flex';
   boot();
 }
 function doLogout(){localStorage.removeItem('a6u');location.reload()}
 
-// ════════════════════════════════════
+// ════════════════════════════
 // BOOT
-// ════════════════════════════════════
+// ════════════════════════════
 async function boot(){
-  buildPicker();
-  showDash();
   await renderDash();
   await loadDates();
   await checkAlerts();
-  showPicker(true);
 }
 
-// ════════════════════════════════════
-// PICKER
-// ════════════════════════════════════
-function buildPicker(){
-  g('plist').innerHTML=SRVS.map(s=>
-    `<div class="pli" onclick="openSrv('${s.id}')"><span>${s.ico}</span>${s.lb}</div>`
-  ).join('');
-}
-function filtPicker(v){
-  const lv=v.toLowerCase();
-  g('plist').querySelectorAll('.pli').forEach(el=>{
-    el.style.display=!v||el.textContent.toLowerCase().includes(lv)?'':'none';
-  });
-}
-function showPicker(v){
-  g('picker').style.display=v?'block':'none';
-  pickerOn=v;
-  g('btnPick').textContent=v?'✕':'☰';
-}
-function togglePicker(){showPicker(!pickerOn)}
-
-// ════════════════════════════════════
-// DASHBOARD — always grid
-// ════════════════════════════════════
-function showDash(){
-  hideAll();
-  g('dash').style.display='grid'; // explicit grid
-  showPicker(true);
-}
-
+// ════════════════════════════
+// DASHBOARD
+// ════════════════════════════
 async function renderDash(){
   try{
-    const[eqs,exs,ors,tas]=await Promise.all([
-      getAll('equipos'),getAll('expedientes'),getAll('ordenes'),getAll('tareas')
-    ]);
+    const[eqs,exs,ors,tas]=await Promise.all([getAll('equipos'),getAll('expedientes'),getAll('ordenes'),getAll('tareas')]);
     const hoy=today();
     let html='';
     SRVS.forEach(srv=>{
@@ -560,181 +530,162 @@ async function renderDash(){
       const sx=exs.filter(e=>mSrv(e.servicio,srv.id));
       const so=ors.filter(e=>mSrv(e.servicio,srv.id));
       const st=tas.filter(t=>mSrv(t.servicio,srv.id));
-      const comp=st.filter(t=>t.tipo==='Compra');
+      const compras=st.filter(t=>t.tipo==='Compra');
       let al=0,wn=0;
       se.forEach(e=>{const d=diff(hoy,toD(e.proximoMant));if(d!==null&&d<0)al++;else if(d!==null&&d<30)wn++;});
-      const cls=al?'al':wn?'wn':'';
+      const cls=al?'al':wn?'wn':'ok';
+      const stlbl=al?'⚠ ALERTA':wn?'⏰ ADVERTENCIA':'✓ OK';
       html+=`<div class="sc ${cls}" onclick="openSrv('${srv.id}')">
-        <div class="ico">${srv.ico}</div><h3>${srv.lb}</h3>
+        <div class="strip"></div>
+        <div class="stlbl">${stlbl}</div>
+        <div class="ico">${srv.ico}</div>
+        <h3>${srv.lb}</h3>
         <div class="cnts">
           <span class="bx baz">${se.length} eq.</span>
           ${al?`<span class="bx bro">⚠${al}</span>`:''}
           ${wn?`<span class="bx bna">⏰${wn}</span>`:''}
           ${sx.length?`<span class="bx bdim">${sx.length} exp</span>`:''}
           ${so.length?`<span class="bx bdim">${so.length} ord</span>`:''}
-          ${comp.length?`<span class="bx bna">🛒${comp.length}</span>`:''}
+          ${compras.length?`<span class="bx bna">🛒${compras.length}</span>`:''}
         </div>
       </div>`;
     });
-    if(!eqs.length&&!exs.length){
-      html+=`<div style="grid-column:1/-1"><div class="emp"><div class="ei">📂</div>Sin datos aún.<br>Ir a <b>⚙️ Admin</b> para importar los Excel.</div></div>`;
-    }
+    if(!eqs.length&&!exs.length)html+=`<div style="grid-column:1/-1"><div class="emp"><div class="ei">📂</div>Sin datos aún.<br>Ir a <b>⚙️ Admin</b> para importar los Excel.</div></div>`;
     g('dash').innerHTML=html;
-  }catch(e){
-    g('dash').innerHTML=`<div style="grid-column:1/-1"><div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div></div>`;
-  }
+  }catch(e){g('dash').innerHTML=`<div style="grid-column:1/-1"><div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div></div>`}
 }
 
-// ════════════════════════════════════
-// SERVICE VIEW
-// ════════════════════════════════════
-function openSrv(id){
+// ════════════════════════════
+// SERVICE + MODULES
+// ════════════════════════════
+async function openSrv(id){
   const s=SRVS.find(x=>x.id===id);if(!s)return;
-  curSrv=id;curTab=0;curTaFilter='all';
-  hideAll();
+  curSrv=id;curMod=null;
+  g('dash').style.display='none';
   g('srvView').style.display='flex';
-  showPicker(false);
+  g('stockPanel').style.display='none';
+  g('adminPanel').style.display='none';
   g('srvIco').textContent=s.ico;
   g('srvNm').textContent=s.lb;
-  buildTabs();
+  g('modContent').innerHTML='';
+  // Deactivate all module cards
+  document.querySelectorAll('.mcard').forEach(c=>c.classList.remove('active-mod'));
+  // Load counts
+  await updateModCounts();
 }
 
-function buildTabs(){
-  g('tabs').innerHTML=TABS.map((t,i)=>
-    `<button class="tb ${i===curTab?'on':''}" onclick="switchTab(${i},'${t.id}')">${t.lb}</button>`
-  ).join('');
-  doTab(TABS[curTab].id);
+async function updateModCounts(){
+  if(!curSrv)return;
+  const[eqs,exs,ors,acs,tas,bas]=await Promise.all([
+    getAll('equipos'),getAll('expedientes'),getAll('ordenes'),getAll('actas'),getAll('tareas'),getAll('bajas')
+  ]);
+  const f=a=>a.filter(e=>mSrv(e.servicio,curSrv));
+  const hoy=today();
+  const se=f(eqs);
+  let al=0,wn=0;
+  se.forEach(e=>{const d=diff(hoy,toD(e.proximoMant));if(d!==null&&d<0)al++;else if(d!==null&&d<30)wn++;});
+  const eqTxt=`${se.length} equipos${al?` · <span style="color:var(--ro)">⚠${al} vencidos</span>`:''}${wn?` · <span style="color:var(--na)">⏰${wn} próximos</span>`:''}`;
+  const ta=f(tas);
+  g('mc-tareas').innerHTML=`${ta.length} registros · ${ta.filter(t=>t.tipo==='Compra').length} compras`;
+  g('mc-equipos').innerHTML=eqTxt;
+  g('mc-expedientes').innerHTML=`${f(exs).length} expedientes`;
+  g('mc-ordenes').innerHTML=`${f(ors).length} órdenes`;
+  g('mc-actas').innerHTML=`${f(acs).length} actas`;
+  g('mc-bajas').innerHTML=`${f(bas).length} bajas`;
 }
-function switchTab(i,id){
-  curTab=i;
-  g('tabs').querySelectorAll('.tb').forEach((b,j)=>b.classList.toggle('on',i===j));
-  if(id==='tareas')curTaFilter='all';
-  doTab(id);
-}
-async function doTab(type){
-  const tc=g('tcont');
-  tc.innerHTML=`<div style="color:var(--dim);font-size:.76rem;padding:.4rem">Cargando...</div>`;
+
+async function openMod(type){
+  curMod=type;
+  // Highlight active card
+  document.querySelectorAll('.mcard').forEach(c=>c.classList.remove('active-mod'));
+  const map={tareas:'mt',equipos:'me',expedientes:'mx',ordenes:'mo',actas:'ma',bajas:'mb'};
+  document.querySelectorAll('.mcard.'+map[type]).forEach(c=>c.classList.add('active-mod'));
+  // Render content
+  const tc=g('modContent');
+  tc.innerHTML=`<div style="color:var(--dim);font-size:.78rem;padding:.5rem">Cargando...</div>`;
   try{
-    if(type==='tareas')     await tabTa(tc);
-    else if(type==='equipos')     await tabEq(tc);
-    else if(type==='expedientes') await tabEx(tc);
-    else if(type==='ordenes')     await tabOr(tc);
-    else if(type==='actas')       await tabAc(tc);
-    else if(type==='bajas')       await tabBa(tc);
+    if(type==='tareas')     await modTa(tc);
+    else if(type==='equipos')     await modEq(tc);
+    else if(type==='expedientes') await modEx(tc);
+    else if(type==='ordenes')     await modOr(tc);
+    else if(type==='actas')       await modAc(tc);
+    else if(type==='bajas')       await modBa(tc);
+    // Scroll to content
+    tc.scrollIntoView({behavior:'smooth',block:'start'});
   }catch(e){tc.innerHTML=`<div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div>`}
 }
 
-// ── TAREAS (first tab, includes Compras + RIC01) ──
-async function tabTa(tc){
+// ── TAREAS ──
+async function modTa(tc){
   const all=await getAll('tareas');
   const rows=all.filter(e=>mSrv(e.servicio,curSrv));
-  const counts={
-    all:rows.length,
-    tarea:rows.filter(r=>r.tipo==='Tarea General'||!r.tipo||r.tipo==='Otro').length,
-    compra:rows.filter(r=>r.tipo==='Compra').length,
-    ric01:rows.filter(r=>r.tipo==='RIC01').length,
-  };
-
-  const filt={
-    all:rows,
-    tarea:rows.filter(r=>r.tipo==='Tarea General'||!r.tipo||r.tipo==='Otro'),
-    compra:rows.filter(r=>r.tipo==='Compra'),
-    ric01:rows.filter(r=>r.tipo==='RIC01'),
-  };
-  const shown=filt[curTaFilter]||rows;
-
+  const cnt={all:rows.length,ta:rows.filter(r=>!r.tipo||r.tipo==='Tarea General'||r.tipo==='Otro').length,co:rows.filter(r=>r.tipo==='Compra').length,ri:rows.filter(r=>r.tipo==='RIC01').length};
+  const shown={all:rows,ta:rows.filter(r=>!r.tipo||r.tipo==='Tarea General'||r.tipo==='Otro'),co:rows.filter(r=>r.tipo==='Compra'),ri:rows.filter(r=>r.tipo==='RIC01')}[curTaFil]||rows;
   tc.innerHTML=`
     <div class="tbar">
-      <button class="btn baz2" onclick="openForm('tarea')">+ Agregar</button>
+      <button class="btn baz2" onclick="openForm('tarea')">+ Tarea</button>
       <button class="btn bna2" onclick="openForm('compra')">🛒 Compra</button>
-      <div class="sp"></div>
-      <span class="bx baz" style="font-size:.66rem">${rows.length}</span>
     </div>
     <div class="tfilter">
-      <button class="tfb on az" onclick="setTaFil('all',this)">Todas (${counts.all})</button>
-      <button class="tfb" onclick="setTaFil('tarea',this)">📝 Tareas (${counts.tarea})</button>
-      <button class="tfb" onclick="setTaFil('compra',this)">🛒 Compras (${counts.compra})</button>
-      <button class="tfb" onclick="setTaFil('ric01',this)">✅ RIC01 (${counts.ric01})</button>
+      <button class="tfb ${curTaFil==='all'?'on t-all':''}" onclick="setTF('all',this)">Todas (${cnt.all})</button>
+      <button class="tfb ${curTaFil==='ta'?'on t-ta':''}" onclick="setTF('ta',this)">📝 Tareas (${cnt.ta})</button>
+      <button class="tfb ${curTaFil==='co'?'on t-co':''}" onclick="setTF('co',this)">🛒 Compras (${cnt.co})</button>
+      <button class="tfb ${curTaFil==='ri'?'on t-ri':''}" onclick="setTF('ri',this)">✅ RIC01 (${cnt.ri})</button>
     </div>
-    ${!shown.length?`<div class="emp"><div class="ei">${curTaFilter==='compra'?'🛒':'✅'}</div>Sin registros en esta categoría.</div>`
+    ${!shown.length?`<div class="emp"><div class="ei">${curTaFil==='co'?'🛒':'✅'}</div>Sin registros en esta categoría.</div>`
     :shown.map(t=>{
       const tipo=t.tipo||'Tarea General';
       const tcls=tipo==='Compra'?'ct':tipo==='RIC01'?'cr':tipo==='Tarea General'?'cg':'co';
       const tipoPill=tipo==='Compra'?`<span class="pill ppu">🛒 Compra</span>`:tipo==='RIC01'?`<span class="pill pok">✅ RIC01</span>`:tipo==='Tarea General'?`<span class="pill pin">📝 Tarea</span>`:`<span class="pill pdim">${tipo}</span>`;
       const skiPill=t.skinet?'<span class="pill pok">✓ SKINET</span>':'<span class="pill pwn">⚠ Pendiente</span>';
       return`<div class="tcard ${tcls}">
-        <div class="tcardBody">
-          <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.3rem">${tipoPill}${t.tipo==='RIC01'?skiPill:''}</div>
+        <div class="tcBody">
+          <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.3rem">${tipoPill}${tipo==='RIC01'?skiPill:''}</div>
           <p>${es(t.descripcion)}</p>
           ${t.detalle?`<p style="color:var(--dim);font-size:.68rem;margin-top:.2rem">${es(t.detalle)}</p>`:''}
           <div class="tmeta">${t.fecha||'—'} · ${es(t.usuario)}</div>
         </div>
-        <div class="tcardAct">
+        <div class="tcAct">
           <button class="ab" onclick="editR('tarea',${t.id})">✏️</button>
           <button class="ab" onclick="delR('tarea',${t.id})">🗑</button>
         </div>
       </div>`;
     }).join('')}
-    <div style="margin-top:.6rem;background:rgba(0,151,167,.07);border:1px solid rgba(0,151,167,.25);border-radius:8px;padding:.5rem .7rem;font-size:.7rem;color:#4dd0e1">
-      ℹ️ Las tareas tipo <b>RIC01</b> se deben registrar en <b>SKINET</b> para mantener ambos sistemas actualizados.
-    </div>`;
+    <div class="infobx">ℹ️ Las tareas tipo <b>RIC01</b> deben registrarse también en <b>SKINET</b>.</div>`;
+}
+function setTF(f,el){
+  curTaFil=f;
+  document.querySelectorAll('.tfb').forEach(b=>b.className='tfb');
+  el.className=`tfb on t-${f}`;
+  openMod('tareas');
 }
 
-function setTaFil(f,el){
-  curTaFilter=f;
-  document.querySelectorAll('.tfb').forEach(b=>{
-    b.classList.remove('on','az','na','ve','cy','pu');
-  });
-  el.classList.add('on');
-  if(f==='all')el.classList.add('az');
-  else if(f==='tarea')el.classList.add('cy');
-  else if(f==='compra')el.classList.add('pu');
-  else if(f==='ric01')el.classList.add('ve');
-  doTab('tareas');
-}
-
-// ── EQUIPOS (sorted by maintenance) ──
-async function tabEq(tc){
+// ── EQUIPOS ──
+async function modEq(tc){
   const all=await getAll('equipos');
   let rows=all.filter(e=>mSrv(e.servicio,curSrv));
   const hoy=today();
-
-  // Sort: vencidos first, then próximos, then OK, then sin fecha
   rows.sort((a,b)=>{
-    const da=diff(hoy,toD(a.proximoMant));
-    const db2=diff(hoy,toD(b.proximoMant));
-    if(da===null&&db2===null)return 0;
-    if(da===null)return 1;
-    if(db2===null)return -1;
-    return da-db2; // menor (más vencido/urgente) primero
+    const da=diff(hoy,toD(a.proximoMant)),db2=diff(hoy,toD(b.proximoMant));
+    if(da===null&&db2===null)return 0;if(da===null)return 1;if(db2===null)return -1;return da-db2;
   });
-
-  const hosp=rows.filter(e=>!e.tipoEq||e.tipoEq==='Hospital');
-  const como=rows.filter(e=>e.tipoEq==='Comodato');
-
-  if(!rows.length){
-    tc.innerHTML=`<div class="tbar"><button class="btn baz2" onclick="openForm('equipo')">+ Agregar</button></div>
-    <div class="emp"><div class="ei">🩺</div>Sin equipos. Importá <b>equipos.xlsx</b> desde ⚙️ Admin.</div>`;return;
-  }
-
+  if(!rows.length){tc.innerHTML=`<div class="tbar"><button class="btn baz2" onclick="openForm('equipo')">+ Agregar equipo</button></div><div class="emp"><div class="ei">🩺</div>Sin equipos. Importá <b>equipos.xlsx</b> desde ⚙️ Admin.</div>`;return}
   tc.innerHTML=`
     <div class="tbar">
       <button class="btn baz2" onclick="openForm('equipo')">+ Agregar</button>
       <div class="sp"></div>
-      <span class="bx baz" style="font-size:.66rem">${hosp.length} hosp.</span>
-      <span class="bx bpu" style="font-size:.66rem">${como.length} comod.</span>
+      <span class="bx baz">${rows.filter(e=>!e.tipoEq||e.tipoEq==='Hospital').length} hosp.</span>
+      <span class="bx bpu">${rows.filter(e=>e.tipoEq==='Comodato').length} comod.</span>
     </div>
-    <div class="tbar"><input class="fi" type="text" placeholder="Buscar descripción, serie, marca..." oninput="ft('eqT',this.value)"></div>
+    <div class="tbar"><input class="fi" type="text" placeholder="Buscar equipo, serie, marca..." oninput="ft('eqT',this.value)"></div>
     <div class="tw"><table id="eqT">
-      <thead><tr><th>Equipo</th><th>Tipo</th><th>Marca</th><th>Serie</th><th>Estado</th><th>Próx.Mant</th><th>Días</th><th></th></tr></thead>
+      <thead><tr><th>Equipo</th><th>Tipo</th><th>Estado</th><th>Próx.Mant</th><th>Días</th><th></th></tr></thead>
       <tbody>${rows.map(e=>{
         const pd=toD(e.proximoMant),d=diff(hoy,pd);
         const tipoB=e.tipoEq==='Comodato'?`<span class="tipo-c">Comodato</span>`:`<span class="tipo-h">Hospital</span>`;
         return`<tr>
-          <td><b style="font-size:.71rem">${es(e.descrip)}</b></td>
+          <td><b style="font-size:.72rem">${es(e.descrip)}</b><br><span style="font-size:.62rem;color:var(--dim)">${es(e.marca)} · ${es(e.serie)}</span></td>
           <td>${tipoB}</td>
-          <td style="font-size:.65rem">${es(e.marca)}</td>
-          <td style="font-size:.62rem;color:var(--dim)">${es(e.serie)}</td>
           <td>${pill(e.estado,'eq')}</td>
           <td style="font-size:.65rem">${fd(pd)}</td>
           <td>${dchip(d)}</td>
@@ -743,12 +694,11 @@ async function tabEq(tc){
             <button class="ab" onclick="delR('equipo',${e.id})">🗑</button>
           </div></td>
         </tr>`;
-      }).join('')}
-      </tbody></table></div>`;
+      }).join('')}</tbody></table></div>`;
 }
 
 // ── EXPEDIENTES ──
-async function tabEx(tc){
+async function modEx(tc){
   const all=await getAll('expedientes');
   const rows=all.filter(e=>mSrv(e.servicio,curSrv));
   const hoy=today();
@@ -759,8 +709,8 @@ async function tabEx(tc){
     <div class="tbar">
       <button class="btn baz2" onclick="openForm('expediente')">+ Agregar</button>
       <div class="sp"></div>
-      <span class="bx bna" style="font-size:.66rem">${tr.length} trámite</span>
-      <span class="bx bgr2" style="font-size:.66rem">${ap.length} aprob.</span>
+      <span class="bx bna">${tr.length} trámite</span>
+      <span class="bx bgr2">${ap.length} aprob.</span>
     </div>
     ${exS('⏳ En Trámite / RIC55',tr,hoy)}
     ${ap.length?exS('✅ Aprobados',ap,hoy):''}
@@ -770,17 +720,16 @@ async function tabEx(tc){
 function exS(t,rows,hoy){
   if(!rows.length)return`<div class="stitle">${t}: sin registros</div>`;
   return`<div class="stitle">${t}</div>
-    <div class="tw" style="margin-bottom:.5rem"><table>
-    <thead><tr><th>N° Exp.</th><th>Descripción</th><th>Inicio</th><th>Días</th><th>Estado</th><th>Resp.</th><th></th></tr></thead>
+    <div class="tw" style="margin-bottom:.6rem"><table>
+    <thead><tr><th>N° Exp.</th><th>Descripción</th><th>Inicio</th><th>Días</th><th>Estado</th><th></th></tr></thead>
     <tbody>${rows.map(e=>{
       const fi=toD(e.fechaInicio),d=diff(fi,hoy);
       return`<tr>
         <td><b>${es(e.numero)}</b></td>
-        <td style="max-width:150px;font-size:.68rem">${es(e.descripcion)}</td>
+        <td style="max-width:140px;font-size:.69rem">${es(e.descripcion)}</td>
         <td style="font-size:.64rem">${fd(fi)}</td>
-        <td><span class="dc" style="background:rgba(0,151,167,.14);color:#4dd0e1">${d!==null?d+'d':'—'}</span></td>
+        <td><span class="dc" style="background:#e0f7fa;color:var(--cy);border:1px solid #b2ebf2">${d!==null?d+'d':'—'}</span></td>
         <td>${pill(e.estado,'ex')}</td>
-        <td style="font-size:.62rem">${es(e.responsable)}</td>
         <td><div class="arow">
           <button class="ab" onclick="editR('expediente',${e.id})">✏️</button>
           <button class="ab" onclick="delR('expediente',${e.id})">🗑</button>
@@ -790,31 +739,27 @@ function exS(t,rows,hoy){
 }
 
 // ── ÓRDENES ──
-async function tabOr(tc){
+async function modOr(tc){
   const all=await getAll('ordenes');
   const rows=all.filter(e=>mSrv(e.servicio,curSrv));
   const hoy=today();
-  if(!rows.length){
-    tc.innerHTML=`<div class="tbar"><button class="btn baz2" onclick="openForm('orden')">+ Agregar</button></div>
-    <div class="emp"><div class="ei">📋</div>Sin órdenes. Importá <b>orden.xlsx</b>.</div>`;return;
-  }
+  if(!rows.length){tc.innerHTML=`<div class="tbar"><button class="btn baz2" onclick="openForm('orden')">+ Agregar</button></div><div class="emp"><div class="ei">📋</div>Sin órdenes. Importá <b>orden.xlsx</b>.</div>`;return}
   tc.innerHTML=`
     <div class="tbar">
       <button class="btn baz2" onclick="openForm('orden')">+ Agregar</button>
-      <div class="sp"></div><span class="bx baz" style="font-size:.66rem">${rows.length}</span>
+      <div class="sp"></div><span class="bx baz">${rows.length}</span>
     </div>
-    <div class="tbar"><input class="fi" type="text" placeholder="Buscar N° o descripción..." oninput="ft('orT',this.value)"></div>
+    <div class="tbar"><input class="fi" type="text" placeholder="Buscar N° u orden..." oninput="ft('orT',this.value)"></div>
     <div class="tw"><table id="orT">
-    <thead><tr><th>N° Orden</th><th>Descripción</th><th>Inicio</th><th>Días</th><th>Estado</th><th>Resp.</th><th></th></tr></thead>
+    <thead><tr><th>N° Orden</th><th>Descripción</th><th>Inicio</th><th>Días</th><th>Estado</th><th></th></tr></thead>
     <tbody>${rows.map(o=>{
       const fi=toD(o.fechaInicio),d=diff(fi,hoy);
       return`<tr>
         <td><b>${es(o.numero)}</b></td>
-        <td style="max-width:150px;font-size:.68rem">${es(o.descripcion)}</td>
+        <td style="max-width:140px;font-size:.69rem">${es(o.descripcion)}</td>
         <td style="font-size:.64rem">${fd(fi)}</td>
-        <td><span class="dc" style="background:rgba(245,124,0,.14);color:#ffb74d">${d!==null?d+'d':'—'}</span></td>
+        <td><span class="dc" style="background:var(--nali);color:var(--na);border:1px solid var(--naba)">${d!==null?d+'d':'—'}</span></td>
         <td>${pill(o.estado,'or')}</td>
-        <td style="font-size:.62rem">${es(o.responsable)}</td>
         <td><div class="arow">
           <button class="ab" onclick="editR('orden',${o.id})">✏️</button>
           <button class="ab" onclick="delR('orden',${o.id})">🗑</button>
@@ -824,23 +769,22 @@ async function tabOr(tc){
 }
 
 // ── ACTAS ──
-async function tabAc(tc){
+async function modAc(tc){
   const all=await getAll('actas');
   const rows=all.filter(e=>mSrv(e.servicio,curSrv));
   tc.innerHTML=`
     <div class="tbar">
       <button class="btn baz2" onclick="openForm('acta')">+ Nueva Acta</button>
-      <div class="sp"></div><span class="bx baz" style="font-size:.66rem">${rows.length}</span>
+      <div class="sp"></div><span class="bx baz">${rows.length}</span>
     </div>
     ${!rows.length?`<div class="emp"><div class="ei">📄</div>Sin actas registradas.</div>`:`
     <div class="tw"><table>
-    <thead><tr><th>Equipo</th><th>Tipo</th><th>Destino</th><th>Nota</th><th>Fecha</th><th></th></tr></thead>
+    <thead><tr><th>Equipo</th><th>Tipo</th><th>Destino</th><th>Fecha</th><th></th></tr></thead>
     <tbody>${rows.map(a=>`<tr>
-      <td><b style="font-size:.7rem">${es(a.equipo)}</b></td>
+      <td><b style="font-size:.71rem">${es(a.equipo)}</b></td>
       <td><span class="pill pin">${es(a.tipo)}</span></td>
-      <td style="font-size:.65rem">${es(a.destino)}</td>
-      <td style="font-size:.64rem;max-width:130px">${es(a.descripcion)}</td>
-      <td style="font-size:.62rem">${a.fecha||'—'}</td>
+      <td style="font-size:.66rem">${es(a.destino)}</td>
+      <td style="font-size:.63rem">${a.fecha||'—'}</td>
       <td><div class="arow">
         <button class="ab" onclick="editR('acta',${a.id})">✏️</button>
         <button class="ab" onclick="delR('acta',${a.id})">🗑</button>
@@ -849,22 +793,22 @@ async function tabAc(tc){
 }
 
 // ── BAJAS ──
-async function tabBa(tc){
+async function modBa(tc){
   const all=await getAll('bajas');
   const rows=all.filter(e=>mSrv(e.servicio,curSrv));
   tc.innerHTML=`
     <div class="tbar">
       <button class="btn baz2" onclick="openForm('baja')">+ Dar de Baja</button>
-      <div class="sp"></div><span class="bx bro" style="font-size:.66rem">${rows.length}</span>
+      <div class="sp"></div><span class="bx bro">${rows.length}</span>
     </div>
     ${!rows.length?`<div class="emp"><div class="ei">🗑️</div>Sin bajas registradas.</div>`:`
     <div class="tw"><table>
     <thead><tr><th>Equipo</th><th>Motivo</th><th>Descripción</th><th>Fecha</th><th></th></tr></thead>
     <tbody>${rows.map(b=>`<tr>
-      <td><b style="font-size:.7rem">${es(b.equipo)}</b></td>
+      <td><b style="font-size:.71rem">${es(b.equipo)}</b></td>
       <td><span class="pill pal">${es(b.motivo)}</span></td>
-      <td style="font-size:.66rem;max-width:160px">${es(b.descripcion)}</td>
-      <td style="font-size:.62rem">${b.fecha||'—'}</td>
+      <td style="font-size:.67rem;max-width:140px">${es(b.descripcion)}</td>
+      <td style="font-size:.63rem">${b.fecha||'—'}</td>
       <td><div class="arow">
         <button class="ab" onclick="editR('baja',${b.id})">✏️</button>
         <button class="ab" onclick="delR('baja',${b.id})">🗑</button>
@@ -872,22 +816,18 @@ async function tabBa(tc){
     </tr>`).join('')}</tbody></table></div>`}`;
 }
 
-// Live filter table
 function ft(id,v){
   const tbl=document.getElementById(id);if(!tbl)return;
   const lv=v.toLowerCase();
-  tbl.querySelectorAll('tbody tr').forEach(tr=>{
-    tr.style.display=!v||tr.textContent.toLowerCase().includes(lv)?'':'none';
-  });
+  tbl.querySelectorAll('tbody tr').forEach(tr=>{tr.style.display=!v||tr.textContent.toLowerCase().includes(lv)?'':'none'});
 }
-let stTimer=null;
-function tabSearch(v){clearTimeout(stTimer);stTimer=setTimeout(()=>['eqT','orT'].forEach(id=>ft(id,v)),200)}
 
-// ════════════════════════════════════
+// ════════════════════════════
 // STOCK
-// ════════════════════════════════════
+// ════════════════════════════
 async function showStock(){
-  hideAll();g('stockPanel').style.display='block';showPicker(false);
+  g('dash').style.display='none';g('srvView').style.display='none';g('adminPanel').style.display='none';
+  g('stockPanel').style.display='block';
   await renderStock('');
 }
 async function renderStock(f=''){
@@ -896,23 +836,24 @@ async function renderStock(f=''){
   const el=g('stkCont');
   if(!rows.length){el.innerHTML=`<div class="emp"><div class="ei">📦</div>${f?'Sin coincidencias':'Sin stock. Importá <b>Stock_actual.xlsx</b>'}</div>`;return}
   el.innerHTML=`<div class="sg">${rows.map(s=>{
-    const c=Number(s.stock)||0,cls=c<=0?'zr':c<=2?'lw':'';
+    const c=Number(s.stock)||0,cls=c<=0?'zr':c<=2?'lw':'ok-s';
     return`<div class="si ${cls}">
       <h4>${es(s.descrip)}</h4>
       <div class="sn2">
-        <span style="color:var(--dim)">In:</span><span style="font-weight:700">${s.cantIn||0}</span>
-        <span style="color:var(--dim)">Out:</span><span style="font-weight:700">${s.cantOut||0}</span>
-        <span style="color:var(--dim)">Stk:</span><span style="font-weight:700;color:${c<=0?'var(--ro)':c<=2?'var(--na)':'var(--ve2)'}">${c}</span>
+        <span>In: <b>${s.cantIn||0}</b></span>
+        <span>Out: <b>${s.cantOut||0}</b></span>
+        <span>Stk: <b style="color:${c<=0?'var(--ro)':c<=2?'var(--na)':'var(--ve2)'}">${c}</b></span>
       </div>
     </div>`;
   }).join('')}</div>`;
 }
 
-// ════════════════════════════════════
-// ADMIN / SMART IMPORT
-// ════════════════════════════════════
+// ════════════════════════════
+// ADMIN + IMPORT
+// ════════════════════════════
 async function showAdmin(){
-  hideAll();g('adminPanel').style.display='block';showPicker(false);
+  g('dash').style.display='none';g('srvView').style.display='none';g('stockPanel').style.display='none';
+  g('adminPanel').style.display='block';
   g('prev').style.display='none';
   await loadDates();
 }
@@ -920,8 +861,7 @@ async function loadDates(){
   try{
     const[eq,ex,or,st]=await Promise.all(['eq','ex','or','st'].map(k=>getMeta('lu_'+k)));
     const f=v=>v?`Importado: ${v}`:'Sin datos';
-    g('luEq').textContent=f(eq);g('luEx').textContent=f(ex);
-    g('luOr').textContent=f(or);g('luSt').textContent=f(st);
+    g('luEq').textContent=f(eq);g('luEx').textContent=f(ex);g('luOr').textContent=f(or);g('luSt').textContent=f(st);
   }catch(e){}
 }
 function dov(e,el){e.preventDefault();el.classList.add('drag')}
@@ -940,262 +880,149 @@ function procFile(file,k){
       if(!raw.length){toast('Archivo vacío','er');return}
       const parsed=parseXLS(k,raw);
       if(!parsed.length){toast('No se reconocieron columnas','er');return}
-
-      // Smart merge preview
-      const mergeResult=await smartMerge(k,parsed);
-      pending={k,data:mergeResult.merged};
-      showPrev(k,mergeResult);
+      const res=await smartMerge(k,parsed);
+      pending={k,data:res.merged};
+      showPrev(k,res);
     }catch(er){toast('Error: '+er.message,'er')}
   };
   rd.readAsArrayBuffer(file);
 }
 
-// ── SMART MERGE ──
-async function smartMerge(k,newData){
-  const KS2={eq:'equipos',ex:'expedientes',or:'ordenes',st:'stock'};
-  const existing=await getAll(KS2[k]);
-
-  // Key fields for matching
-  const KEY={eq:'serie',ex:'numero',or:'numero',st:'descrip'};
-  const keyF=KEY[k];
-
-  if(!keyF||k==='st'){
-    // Stock: always use Excel
-    return {merged:newData, fromExcel:newData.length, fromApp:0, conflicts:[], skinet:[]};
-  }
-
-  const exMap={};
-  existing.forEach(r=>{
-    const kv=(r[keyF]||'').trim();
-    if(kv)exMap[kv]=r;
-  });
-
-  const merged=[];
-  let fromExcel=0,fromApp=0;
-  const conflicts=[];
-  const skinet=[];
-
-  // Process each new Excel record
-  newData.forEach(nr=>{
-    const kv=(nr[keyF]||'').trim();
-    const er=exMap[kv];
-    if(!kv||!er){
-      // New record not in app
-      merged.push(nr);fromExcel++;
-      if(kv)delete exMap[kv];
-    } else {
-      // Exists in both → compare
-      let winner=nr,reason='Excel';
-      if(k==='eq'){
-        const ad=toD(er.ultimoMant),nd=toD(nr.ultimoMant);
-        if(ad&&nd){
-          if(ad>nd){winner=er;reason='App (mant. más reciente)'}
-          else if(nd>ad){winner=nr;reason='Excel (mant. más reciente)'}
-        } else if(ad&&!nd){winner=er;reason='App (tiene mantenimiento)'}
-        // If app was manually edited
-        if(er.mod){winner=er;reason='App (editado manualmente)'}
-      } else if(k==='ex'||k==='or'){
-        // If app record was manually edited, keep it
-        if(er.mod){winner=er;reason='App (editado manualmente)'}
-        else{
-          const ad=toD(er.fechaInicio),nd=toD(nr.fechaInicio);
-          if(ad&&nd&&ad>nd){winner=er;reason='App (fecha más reciente)'}
-        }
-      }
-
-      const kept={...nr,...winner,id:er.id};
-      merged.push(kept);
-
-      if(winner===er){
-        fromApp++;
-        conflicts.push({campo:kv,motivo:reason});
-        // These need SKINET update if Excel was newer but we kept app
-        skinet.push(kv);
-      } else {
-        fromExcel++;
-        // Check if app had newer data we're discarding
-        if(k==='eq'&&toD(er.ultimoMant)&&!toD(nr.ultimoMant)){
-          skinet.push(kv); // app had maint that Excel doesn't
-        }
-      }
-      delete exMap[kv];
-    }
-  });
-
-  // Records only in app (manually added) → keep them
-  Object.values(exMap).forEach(r=>{merged.push(r);fromApp++});
-
-  return {merged,fromExcel,fromApp,conflicts,skinet};
-}
-
-const KLABEL={eq:'🩺 Equipos',ex:'📁 Expedientes',or:'📋 Órdenes',st:'📦 Stock'};
-const KS={eq:'equipos',ex:'expedientes',or:'ordenes',st:'stock'};
-const KC={eq:['descrip','tipoEq','servicio','estado','proximoMant'],ex:['numero','servicio','descripcion','estado'],or:['numero','servicio','descripcion','estado'],st:['descrip','stock','cantIn','cantOut']};
-
-function showPrev(k,mergeResult){
-  const{merged,fromExcel,fromApp,conflicts,skinet}=mergeResult;
-  g('prevTit').textContent=`Vista previa · ${KLABEL[k]} · ${merged.length} registros totales`;
-
-  const stats=[
-    `<div class="ps">Total: <b>${merged.length}</b></div>`,
-    `<div class="ps">Del Excel: <b>${fromExcel}</b></div>`,
-    `<div class="ps">Mantenidos de App: <b>${fromApp}</b></div>`,
-  ];
-  if(k==='eq'){const sv=[...new Set(merged.map(r=>r.servicio).filter(Boolean))];stats.push(`<div class="ps">Servicios: <b>${sv.length}</b></div>`)}
-  g('prevSt').innerHTML=stats.join('');
-
-  // Merge info
-  let mi='';
-  if(conflicts.length){
-    mi=`<div style="font-size:.7rem;font-weight:700;color:var(--na);margin-bottom:.3rem">⚠ ${conflicts.length} registros conservados de la app (más actualizados)</div>`;
-    mi+=conflicts.slice(0,5).map(c=>`<div class="merge-row">🔒 ${es(c.campo)} → ${es(c.motivo)}</div>`).join('');
-    if(conflicts.length>5)mi+=`<div style="font-size:.67rem;color:var(--dim)">...y ${conflicts.length-5} más</div>`;
-  }
-  if(skinet.length){
-    mi+=`<div style="background:rgba(245,124,0,.08);border:1px solid rgba(245,124,0,.3);border-radius:6px;padding:.4rem .6rem;font-size:.7rem;color:#ffb74d;margin-top:.4rem">
-      📱 <b>Recordatorio SKINET:</b> ${skinet.length} equipos/registros con diferencias entre App y Excel. Verificar y actualizar SKINET manualmente.
-    </div>`;
-  }
-  g('mergeInfo').innerHTML=mi;
-
-  // Preview table
-  const prows=merged.slice(0,8);
-  const cols=KC[k]||[];
-  g('prevTbl').innerHTML=`<div style="font-size:.65rem;color:var(--dim);margin-bottom:.25rem">Primeros ${prows.length} de ${merged.length}</div>
-    <table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
-    <tbody>${prows.map(r=>`<tr>${cols.map(c=>`<td style="font-size:.66rem;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r[c]||'—'}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
-
-  g('prev').style.display='block';
-  g('prev').scrollIntoView({behavior:'smooth',block:'start'});
-}
-
-async function doImport(){
-  if(!pending.k)return;
-  const{k,data}=pending;
-  await clr(KS[k]);
-  await bulkPut(KS[k],data);
-  await setMeta('lu_'+k,new Date().toLocaleString('es-AR'));
-  toast(`✅ ${data.length} registros guardados`,'ok');
-  pending={};g('prev').style.display='none';
-  await loadDates();
-  await renderDash();
-  await checkAlerts();
-}
-function cancelPrev(){pending={};g('prev').style.display='none'}
-
-async function dbSt(){
-  const cnts=await Promise.all(STORES.filter(s=>s!=='meta').map(async s=>{const r=await getAll(s);return`<b>${s}</b>:${r.length}`}));
-  g('dbSC').innerHTML=cnts.join(' · ');
-}
-function clearAll(){
-  cfm2('⚠️ ¿Borrar TODOS los datos locales?\nNo se puede deshacer.',async()=>{
-    await Promise.all(STORES.map(s=>clr(s)));
-    toast('Datos borrados','ok');showDash();await renderDash();
-  });
-}
-
-// ════════════════════════════════════
-// PARSE EXCEL
-// ════════════════════════════════════
 function rv(r,...keys){for(const k of keys){if(r[k]!==undefined&&r[k]!==null&&String(r[k]).trim()!=='')return String(r[k]).trim()}return''}
 
 function parseXLS(k,rows){
   const now=new Date().toLocaleDateString('es-AR'),u=user?.n||'';
   switch(k){
     case'eq':return rows.map((r,i)=>({
-      id:Date.now()+i,
-      descrip:     rv(r,'Descrip','DESCRIP','descrip'),
-      marca:       rv(r,'Marca - Modelo','Marca-Modelo','Marca','marca'),
-      serie:       rv(r,'Nº Serie','N° Serie','Serie','serie'),
-      servicio:    nSrv(rv(r,'Servicio','SERVICIO','servicio')),
-      subServicio: rv(r,'Sub Servicio','Sub servicio','subServicio'),
-      area:        rv(r,'Area','AREA')||'AREA 6',
-      estado:      rv(r,'Estado','ESTADO')||'En Servicio',
-      ultimoMant:  rv(r,'Ultimo Mantenimiento','Ultimo Mantemiento','ultimoMant'),
-      periodo:     rv(r,'Periodo','periodo'),
-      proximoMant: rv(r,'Proximo Mantenimiento','Próximo Mantenimiento','proximoMant'),
-      tipoEq:      'Hospital', // default; editable manually
-      usuario:u,importado:now
+      id:Date.now()+i,descrip:rv(r,'Descrip','DESCRIP','descrip'),marca:rv(r,'Marca - Modelo','Marca-Modelo','Marca','marca'),
+      serie:rv(r,'Nº Serie','N° Serie','Serie','serie'),servicio:nSrv(rv(r,'Servicio','SERVICIO','servicio')),
+      subServicio:rv(r,'Sub Servicio','Sub servicio','subServicio'),area:rv(r,'Area','AREA')||'AREA 6',
+      estado:rv(r,'Estado','ESTADO')||'En Servicio',ultimoMant:rv(r,'Ultimo Mantenimiento','Ultimo Mantemiento','ultimoMant'),
+      periodo:rv(r,'Periodo','periodo'),proximoMant:rv(r,'Proximo Mantenimiento','Próximo Mantenimiento','proximoMant'),
+      tipoEq:'Hospital',usuario:u,importado:now
     })).filter(r=>r.descrip);
-
     case'ex':return rows.map((r,i)=>({
-      id:Date.now()+i,
-      servicio:    nSrv(rv(r,'Servicio','SERVICIO')),
-      numero:      rv(r,'N° Expediente','N Expediente','numero'),
-      fechaInicio: rv(r,'Fecha de Inicio','Fecha Inicio','fechaInicio'),
-      descripcion: rv(r,'Descripcion','Descripción','descripcion'),
-      estado:      rv(r,'Estado','ESTADO')||'En Trámite',
-      responsable: rv(r,'Responsable','responsable'),
-      usuario:u,importado:now
+      id:Date.now()+i,servicio:nSrv(rv(r,'Servicio','SERVICIO')),numero:rv(r,'N° Expediente','N Expediente','numero'),
+      fechaInicio:rv(r,'Fecha de Inicio','Fecha Inicio','fechaInicio'),descripcion:rv(r,'Descripcion','Descripción','descripcion'),
+      estado:rv(r,'Estado','ESTADO')||'En Trámite',responsable:rv(r,'Responsable','responsable'),usuario:u,importado:now
     })).filter(r=>r.numero);
-
     case'or':return rows.map((r,i)=>({
-      id:Date.now()+i,
-      servicio:    nSrv(rv(r,'Servicio','SERVICIO')),
-      numero:      rv(r,'N° Orden','N Orden','numero'),
-      fechaInicio: rv(r,'Fecha de Inicio','Fecha Inicio','fechaInicio'),
-      descripcion: rv(r,'Descripcion','Descripción','descripcion'),
-      estado:      rv(r,'Estado','ESTADO')||'Iniciada',
-      responsable: rv(r,'Responsable','responsable'),
-      usuario:u,importado:now
+      id:Date.now()+i,servicio:nSrv(rv(r,'Servicio','SERVICIO')),numero:rv(r,'N° Orden','N Orden','numero'),
+      fechaInicio:rv(r,'Fecha de Inicio','Fecha Inicio','fechaInicio'),descripcion:rv(r,'Descripcion','Descripción','descripcion'),
+      estado:rv(r,'Estado','ESTADO')||'Iniciada',responsable:rv(r,'Responsable','responsable'),usuario:u,importado:now
     })).filter(r=>r.numero);
-
     case'st':return rows.map((r,i)=>({
-      id:Date.now()+i,
-      area:    rv(r,'Area','AREA')||'AREA 6',
-      descrip: rv(r,'Descrip','DESCRIP','descrip'),
-      cantIn:  Number(rv(r,'SumaDeCantidad_in','Cantidad_in')||0),
-      cantOut: Number(rv(r,'SumaDeCantidad_out','Cantidad_out')||0),
-      stock:   Number(rv(r,'Stock','stock')||0),
-      usuario:u,importado:now
+      id:Date.now()+i,area:rv(r,'Area','AREA')||'AREA 6',descrip:rv(r,'Descrip','DESCRIP','descrip'),
+      cantIn:Number(rv(r,'SumaDeCantidad_in','Cantidad_in')||0),cantOut:Number(rv(r,'SumaDeCantidad_out','Cantidad_out')||0),
+      stock:Number(rv(r,'Stock','stock')||0),usuario:u,importado:now
     })).filter(r=>r.descrip);
-
     default:return[];
   }
 }
 
-// ════════════════════════════════════
+async function smartMerge(k,newData){
+  const KS2={eq:'equipos',ex:'expedientes',or:'ordenes',st:'stock'};
+  const existing=await getAll(KS2[k]);
+  if(k==='st')return{merged:newData,fromExcel:newData.length,fromApp:0,conflicts:[]};
+  const KEY={eq:'serie',ex:'numero',or:'numero'};
+  const keyF=KEY[k];
+  const exMap={};existing.forEach(r=>{const kv=(r[keyF]||'').trim();if(kv)exMap[kv]=r});
+  const merged=[];let fromExcel=0,fromApp=0;const conflicts=[];
+  newData.forEach(nr=>{
+    const kv=(nr[keyF]||'').trim();
+    const er=exMap[kv];
+    if(!kv||!er){merged.push(nr);fromExcel++;if(kv)delete exMap[kv];}
+    else{
+      let winner=nr,reason='Excel';
+      if(k==='eq'){
+        if(er.mod){winner=er;reason='App (editado manualmente)'}
+        else{const ad=toD(er.ultimoMant),nd=toD(nr.ultimoMant);if(ad&&nd&&ad>nd){winner=er;reason='App (mant. más reciente)'}else if(ad&&!nd){winner=er;reason='App (tiene mantenimiento)'}}
+      }else if(er.mod){winner=er;reason='App (editado manualmente)'}
+      const kept={...nr,...winner,id:er.id};merged.push(kept);
+      if(winner===er){fromApp++;conflicts.push({campo:kv,motivo:reason})}else fromExcel++;
+      delete exMap[kv];
+    }
+  });
+  Object.values(exMap).forEach(r=>{merged.push(r);fromApp++});
+  return{merged,fromExcel,fromApp,conflicts};
+}
+
+const KLABEL={eq:'🩺 Equipos',ex:'📁 Expedientes',or:'📋 Órdenes',st:'📦 Stock'};
+const KS={eq:'equipos',ex:'expedientes',or:'ordenes',st:'stock'};
+const KC={eq:['descrip','servicio','estado','proximoMant'],ex:['numero','servicio','descripcion','estado'],or:['numero','servicio','descripcion','estado'],st:['descrip','stock','cantIn','cantOut']};
+
+function showPrev(k,r){
+  const{merged,fromExcel,fromApp,conflicts}=r;
+  g('prevTit').textContent=`Vista previa · ${KLABEL[k]} · ${merged.length} registros`;
+  g('prevSt').innerHTML=[`<div class="ps">Total: <b>${merged.length}</b></div>`,`<div class="ps">Del Excel: <b>${fromExcel}</b></div>`,`<div class="ps">App: <b>${fromApp}</b></div>`].join('');
+  let mi='';
+  if(conflicts.length){
+    mi=`<div style="font-size:.71rem;font-weight:700;color:var(--na);margin-bottom:.3rem">⚠ ${conflicts.length} registros conservados de la App por estar más actualizados</div>`;
+    mi+=conflicts.slice(0,4).map(c=>`<div class="merge-row">🔒 ${es(c.campo)} → ${es(c.motivo)}</div>`).join('');
+    if(conflicts.length>4)mi+=`<div style="font-size:.67rem;color:var(--dim)">...y ${conflicts.length-4} más</div>`;
+    mi+=`<div class="warnbx" style="margin-top:.4rem">📱 Verificar y actualizar <b>SKINET</b> con los datos desincronizados.</div>`;
+  }
+  g('mergeInfo').innerHTML=mi;
+  const cols=KC[k]||[],prows=merged.slice(0,7);
+  g('prevTbl').innerHTML=`<div style="font-size:.65rem;color:var(--dim);margin-bottom:.25rem">Primeros ${prows.length} de ${merged.length}</div>
+    <table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+    <tbody>${prows.map(r=>`<tr>${cols.map(c=>`<td style="font-size:.67rem;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r[c]||'—'}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  g('prev').style.display='block';
+  g('prev').scrollIntoView({behavior:'smooth',block:'start'});
+}
+async function doImport(){
+  if(!pending.k)return;
+  const{k,data}=pending;
+  await clr(KS[k]);await bulkPut(KS[k],data);
+  await setMeta('lu_'+k,new Date().toLocaleString('es-AR'));
+  toast(`✅ ${data.length} registros guardados`,'ok');
+  pending={};g('prev').style.display='none';
+  await loadDates();await renderDash();await checkAlerts();
+}
+function cancelPrev(){pending={};g('prev').style.display='none'}
+async function dbSt(){
+  const cnts=await Promise.all(STORES.filter(s=>s!=='meta').map(async s=>{const r=await getAll(s);return`<b>${s}</b>:${r.length}`}));
+  g('dbSC').innerHTML=cnts.join(' · ');
+}
+function clearAll(){
+  cfm2('⚠️ ¿Borrar TODOS los datos locales?\nNo se puede deshacer.',async()=>{
+    await Promise.all(STORES.map(s=>clr(s)));toast('Datos borrados','ok');goHome();await renderDash();
+  });
+}
+
+// ════════════════════════════
 // FORM PANEL
-// ════════════════════════════════════
+// ════════════════════════════
 async function openForm(type,data=null){
   fmType=type;fmMode=data?'edit':'new';fmId=data?.id||null;
   const d=data||{};
   const srv=d.servicio||curSrv||'';
   const sOpts=SRVS.map(s=>`<option value="${s.id}" ${nSrv(s.id)===nSrv(srv)?'selected':''}>${s.ico} ${s.lb}</option>`).join('');
-  const TITLES={equipo:'🩺 Equipo',expediente:'📁 Expediente/RIC55',orden:'📋 Orden de Trabajo',acta:'📄 Acta',tarea:'✅ Tarea/RIC01',compra:'🛒 Compra',baja:'🗑️ Baja RIC44',stock:'📦 Stock'};
+  const TITLES={equipo:'🩺 Equipo',expediente:'📁 Expediente/RIC55',orden:'📋 Orden',acta:'📄 Acta',tarea:'✅ Tarea',compra:'🛒 Compra',baja:'🗑️ Baja RIC44',stock:'📦 Stock'};
   g('fptit').textContent=(data?'Editar ':'Nuevo ')+TITLES[type];
   let html='';
-
   switch(type){
     case'equipo':{
-      const eqs=await getAll('equipos');
-      const eSrv=eqs.filter(e=>mSrv(e.servicio,curSrv));
+      const eqs=await getAll('equipos');const eSrv=eqs.filter(e=>mSrv(e.servicio,curSrv));
       html=`
         ${eSrv.length&&!data?`<div class="fg"><label>Copiar desde equipo existente</label>
-          <select onchange="fillEq(this.value)"><option value="">— Nuevo equipo —</option>
+          <select onchange="fillEq(this.value)"><option value="">— Equipo nuevo —</option>
           ${eSrv.map(e=>`<option value="${e.id}">${es(e.descrip)} | S/N: ${es(e.serie)}</option>`).join('')}</select></div>`:''}
         <div class="fg"><label>Descripción *</label><input id="fD" value="${es(d.descrip)}"></div>
         <div class="fg2">
-          <div class="fg"><label>Marca / Modelo</label><input id="fM" value="${es(d.marca)}"></div>
-          <div class="fg"><label>N° de Serie</label><input id="fSer" value="${es(d.serie)}"></div>
+          <div class="fg"><label>Marca/Modelo</label><input id="fM" value="${es(d.marca)}"></div>
+          <div class="fg"><label>N° Serie</label><input id="fSer" value="${es(d.serie)}"></div>
         </div>
         <div class="fg2">
-          <div class="fg"><label>Tipo de Equipo</label>
-            <select id="fTipoEq">${TIPOS_EQ.map(t=>`<option ${(d.tipoEq||'Hospital')===t?'selected':''}>${t}</option>`).join('')}</select>
-          </div>
-          <div class="fg"><label>Estado</label>
-            <select id="fEst">${EST_EQ.map(s=>`<option ${d.estado===s?'selected':''}>${s}</option>`).join('')}</select>
-          </div>
+          <div class="fg"><label>Tipo</label><select id="fTipoEq">${TIPOS_EQ.map(t=>`<option ${(d.tipoEq||'Hospital')===t?'selected':''}>${t}</option>`).join('')}</select></div>
+          <div class="fg"><label>Estado</label><select id="fEst">${EST_EQ.map(s=>`<option ${d.estado===s?'selected':''}>${s}</option>`).join('')}</select></div>
         </div>
         <div class="fg"><label>Servicio</label><select id="fSrv">${sOpts}</select></div>
         <div class="fg"><label>Sub Servicio</label><input id="fSS" value="${es(d.subServicio)}"></div>
         <div class="fg2">
-          <div class="fg"><label>Último Mantenimiento</label><input id="fUM" type="date" value="${dv(d.ultimoMant)}"></div>
-          <div class="fg"><label>Próximo Mantenimiento</label><input id="fPM" type="date" value="${dv(d.proximoMant)}"></div>
-        </div>
-        <div class="fg"><label>Período (días)</label><input id="fPer" type="number" value="${d.periodo||''}"></div>`;
-      break;}
-
+          <div class="fg"><label>Último Mant.</label><input id="fUM" type="date" value="${dv(d.ultimoMant)}"></div>
+          <div class="fg"><label>Próximo Mant.</label><input id="fPM" type="date" value="${dv(d.proximoMant)}"></div>
+        </div>`;break;}
     case'expediente':
       html=`
         <div class="fg"><label>N° Expediente *</label><input id="fNum" value="${es(d.numero)}"></div>
@@ -1205,9 +1032,7 @@ async function openForm(type,data=null){
           <div class="fg"><label>Fecha de Inicio</label><input id="fFI" type="date" value="${dv(d.fechaInicio)}"></div>
           <div class="fg"><label>Estado</label><select id="fEst">${EST_EX.map(s=>`<option ${d.estado===s?'selected':''}>${s}</option>`).join('')}</select></div>
         </div>
-        <div class="fg"><label>Responsable</label><input id="fResp" value="${es(d.responsable||user?.n)}"></div>`;
-      break;
-
+        <div class="fg"><label>Responsable</label><input id="fResp" value="${es(d.responsable||user?.n)}"></div>`;break;
     case'orden':
       html=`
         <div class="fg"><label>N° Orden *</label><input id="fNum" value="${es(d.numero)}"></div>
@@ -1217,57 +1042,43 @@ async function openForm(type,data=null){
           <div class="fg"><label>Fecha de Inicio</label><input id="fFI" type="date" value="${dv(d.fechaInicio)}"></div>
           <div class="fg"><label>Estado</label><select id="fEst">${EST_OR.map(s=>`<option ${d.estado===s?'selected':''}>${s}</option>`).join('')}</select></div>
         </div>
-        <div class="fg"><label>Responsable</label><input id="fResp" value="${es(d.responsable||user?.n)}"></div>`;
-      break;
-
+        <div class="fg"><label>Responsable</label><input id="fResp" value="${es(d.responsable||user?.n)}"></div>`;break;
     case'acta':{
-      const eqsA=await getAll('equipos');
-      const eqsAS=eqsA.filter(e=>mSrv(e.servicio,curSrv));
+      const eqsA=await getAll('equipos');const eqsAS=eqsA.filter(e=>mSrv(e.servicio,curSrv));
       html=`
         <div class="fg"><label>Equipo *</label>
           ${eqsAS.length?`<select id="fEq"><option value="">— Seleccioná —</option>${eqsAS.map(e=>`<option value="${es(e.descrip)}" ${d.equipo===e.descrip?'selected':''}>${es(e.descrip)} · ${es(e.serie)}</option>`).join('')}</select>`
-          :`<input id="fEq" value="${es(d.equipo)}" placeholder="Nombre del equipo">`}
+          :`<input id="fEq" value="${es(d.equipo)}">`}
         </div>
         <div class="fg2">
           <div class="fg"><label>Tipo</label><select id="fTipo">${TIPOS_A.map(t=>`<option ${d.tipo===t?'selected':''}>${t}</option>`).join('')}</select></div>
-          <div class="fg"><label>Destino / Origen</label><input id="fDest" value="${es(d.destino)}"></div>
+          <div class="fg"><label>Destino/Origen</label><input id="fDest" value="${es(d.destino)}"></div>
         </div>
-        <div class="fg"><label>Observaciones</label><textarea id="fDesc">${es(d.descripcion)}</textarea></div>`;
-      break;}
-
+        <div class="fg"><label>Observaciones</label><textarea id="fDesc">${es(d.descripcion)}</textarea></div>`;break;}
     case'tarea':
       html=`
-        <div class="fg"><label>Tipo</label>
-          <select id="fTipo">${TIPOS_T.map(t=>`<option ${(d.tipo||'Tarea General')===t?'selected':''}>${t}</option>`).join('')}</select></div>
+        <div class="fg"><label>Tipo</label><select id="fTipo">${TIPOS_T.map(t=>`<option ${(d.tipo||'Tarea General')===t?'selected':''}>${t}</option>`).join('')}</select></div>
         <div class="fg"><label>Descripción *</label><textarea id="fDesc">${es(d.descripcion)}</textarea></div>
-        <div class="fg"><label>Detalle / Notas</label><input id="fDet" value="${es(d.detalle)}" placeholder="Información adicional..."></div>
+        <div class="fg"><label>Detalle / Notas</label><input id="fDet" value="${es(d.detalle)}" placeholder="Info adicional..."></div>
         <div class="fg"><label>Registrado en SKINET</label>
-          <select id="fSk"><option value="0" ${!d.skinet?'selected':''}>⚠ No (Pendiente)</option><option value="1" ${d.skinet?'selected':''}>✓ Sí (Registrado)</option></select></div>`;
-      break;
-
-    case'compra': // shortcut: opens tarea form with tipo=Compra preset
+          <select id="fSk"><option value="0" ${!d.skinet?'selected':''}>⚠ No (Pendiente)</option><option value="1" ${d.skinet?'selected':''}>✓ Sí (Registrado)</option></select></div>`;break;
+    case'compra':
       fmType='tarea';
       html=`
-        <div class="fg"><label>Tipo</label>
-          <select id="fTipo"><option selected>Compra</option>${TIPOS_T.filter(t=>t!=='Compra').map(t=>`<option>${t}</option>`).join('')}</select></div>
-        <div class="fg"><label>Qué se necesita comprar *</label><textarea id="fDesc">${es(d.descripcion)}</textarea></div>
+        <div class="fg"><label>Tipo</label><select id="fTipo"><option>Compra</option>${TIPOS_T.filter(t=>t!=='Compra').map(t=>`<option>${t}</option>`).join('')}</select></div>
+        <div class="fg"><label>¿Qué se necesita comprar? *</label><textarea id="fDesc">${es(d.descripcion)}</textarea></div>
         <div class="fg"><label>Cantidad / Presupuesto estimado</label><input id="fDet" value="${es(d.detalle)}" placeholder="Ej: 2 unidades, aprox. $5000..."></div>
-        <div class="fg"><label>Registrado en SKINET</label>
-          <select id="fSk"><option value="0" ${!d.skinet?'selected':''}>⚠ No (Pendiente)</option><option value="1" ${d.skinet?'selected':''}>✓ Sí (Registrado)</option></select></div>`;
-      break;
-
+        <div class="fg"><label>SKINET</label>
+          <select id="fSk"><option value="0">⚠ No</option><option value="1">✓ Sí</option></select></div>`;break;
     case'baja':{
-      const eqsB=await getAll('equipos');
-      const eqsBS=eqsB.filter(e=>mSrv(e.servicio,curSrv));
+      const eqsB=await getAll('equipos');const eqsBS=eqsB.filter(e=>mSrv(e.servicio,curSrv));
       html=`
         <div class="fg"><label>Equipo *</label>
           ${eqsBS.length?`<select id="fEq"><option value="">— Seleccioná —</option>${eqsBS.map(e=>`<option value="${es(e.descrip)}" ${d.equipo===e.descrip?'selected':''}>${es(e.descrip)} · ${es(e.serie)}</option>`).join('')}</select>`
-          :`<input id="fEq" value="${es(d.equipo)}" placeholder="Nombre del equipo">`}
+          :`<input id="fEq" value="${es(d.equipo)}">`}
         </div>
         <div class="fg"><label>Motivo</label><select id="fMot">${MOTIVOS.map(m=>`<option ${d.motivo===m?'selected':''}>${m}</option>`).join('')}</select></div>
-        <div class="fg"><label>Observaciones</label><textarea id="fDesc">${es(d.descripcion)}</textarea></div>`;
-      break;}
-
+        <div class="fg"><label>Observaciones</label><textarea id="fDesc">${es(d.descripcion)}</textarea></div>`;break;}
     case'stock':
       html=`
         <div class="fg"><label>Descripción *</label><input id="fD" value="${es(d.descrip)}"></div>
@@ -1275,21 +1086,18 @@ async function openForm(type,data=null){
           <div class="fg"><label>Entradas</label><input id="fIn" type="number" value="${d.cantIn||0}"></div>
           <div class="fg"><label>Salidas</label><input id="fOut" type="number" value="${d.cantOut||0}"></div>
         </div>
-        <div class="fg"><label>Stock actual</label><input id="fSt" type="number" value="${d.stock||0}"></div>`;
-      break;
+        <div class="fg"><label>Stock actual</label><input id="fSt" type="number" value="${d.stock||0}"></div>`;break;
   }
-
   g('fpbody').innerHTML=html;
   g('fp').classList.add('open');
 }
 
 async function fillEq(id){
   if(!id)return;
-  const eqs=await getAll('equipos');
-  const e=eqs.find(r=>r.id===Number(id));if(!e)return;
+  const eqs=await getAll('equipos');const e=eqs.find(r=>r.id===Number(id));if(!e)return;
   const s=(x,v)=>{const el=document.getElementById(x);if(el)el.value=v||''};
   s('fD',e.descrip);s('fM',e.marca);s('fSer',e.serie);s('fSS',e.subServicio);
-  s('fUM',dv(e.ultimoMant));s('fPM',dv(e.proximoMant));s('fPer',e.periodo);
+  s('fUM',dv(e.ultimoMant));s('fPM',dv(e.proximoMant));
   const te=document.getElementById('fTipoEq');if(te)te.value=e.tipoEq||'Hospital';
   const est=document.getElementById('fEst');if(est)est.value=e.estado||'En Servicio';
   fmId=e.id;fmMode='edit';
@@ -1301,34 +1109,26 @@ async function saveForm(){
   let obj={},store='';
   try{
     switch(fmType){
-      case'equipo':{
-        const d=gv('fD');if(!d){toast('Descripción requerida','er');return}
+      case'equipo':{const d=gv('fD');if(!d){toast('Descripción requerida','er');return}
         obj={descrip:d,marca:gv('fM'),serie:gv('fSer'),servicio:gv('fSrv'),subServicio:gv('fSS'),
-             tipoEq:gv('fTipoEq')||'Hospital',estado:gv('fEst'),
-             ultimoMant:gv('fUM'),proximoMant:gv('fPM'),periodo:gv('fPer'),area:'AREA 6'};
+             tipoEq:gv('fTipoEq')||'Hospital',estado:gv('fEst'),ultimoMant:gv('fUM'),proximoMant:gv('fPM'),area:'AREA 6'};
         store='equipos';break;}
-      case'expediente':{
-        const n=gv('fNum');if(!n){toast('N° requerido','er');return}
+      case'expediente':{const n=gv('fNum');if(!n){toast('N° requerido','er');return}
         obj={numero:n,servicio:gv('fSrv'),descripcion:gv('fDesc'),fechaInicio:gv('fFI'),estado:gv('fEst'),responsable:gv('fResp')};
         store='expedientes';break;}
-      case'orden':{
-        const n=gv('fNum');if(!n){toast('N° requerido','er');return}
+      case'orden':{const n=gv('fNum');if(!n){toast('N° requerido','er');return}
         obj={numero:n,servicio:gv('fSrv'),descripcion:gv('fDesc'),fechaInicio:gv('fFI'),estado:gv('fEst'),responsable:gv('fResp')};
         store='ordenes';break;}
-      case'acta':{
-        const eq=gv('fEq');if(!eq){toast('Equipo requerido','er');return}
+      case'acta':{const eq=gv('fEq');if(!eq){toast('Equipo requerido','er');return}
         obj={equipo:eq,tipo:gv('fTipo'),destino:gv('fDest'),descripcion:gv('fDesc'),servicio:curSrv,fecha:hoy};
         store='actas';break;}
-      case'tarea':{
-        const td=gv('fDesc');if(!td){toast('Descripción requerida','er');return}
+      case'tarea':{const td=gv('fDesc');if(!td){toast('Descripción requerida','er');return}
         obj={tipo:gv('fTipo')||'Tarea General',descripcion:td,detalle:gv('fDet'),skinet:gv('fSk')==='1',servicio:curSrv,fecha:hoy};
         store='tareas';break;}
-      case'baja':{
-        const eq=gv('fEq');if(!eq){toast('Equipo requerido','er');return}
+      case'baja':{const eq=gv('fEq');if(!eq){toast('Equipo requerido','er');return}
         obj={equipo:eq,motivo:gv('fMot'),descripcion:gv('fDesc'),servicio:curSrv,fecha:hoy};
         store='bajas';break;}
-      case'stock':{
-        const d=gv('fD');if(!d){toast('Descripción requerida','er');return}
+      case'stock':{const d=gv('fD');if(!d){toast('Descripción requerida','er');return}
         obj={descrip:d,stock:Number(gv('fSt')||0),cantIn:Number(gv('fIn')||0),cantOut:Number(gv('fOut')||0),area:'AREA 6'};
         store='stock';break;}
     }
@@ -1339,94 +1139,70 @@ async function saveForm(){
     await refreshView();
   }catch(e){toast('Error: '+e.message,'er')}
 }
-
 function closeForm(){g('fp').classList.remove('open');g('fpbody').innerHTML=''}
 
 async function editR(type,id){
   const sm={equipo:'equipos',expediente:'expedientes',orden:'ordenes',acta:'actas',tarea:'tareas',baja:'bajas'};
-  const all=await getAll(sm[type]);
-  const item=all.find(r=>r.id===id);
+  const all=await getAll(sm[type]);const item=all.find(r=>r.id===id);
   if(item)openForm(type,item);
 }
 async function delR(type,id){
   const sm={equipo:'equipos',expediente:'expedientes',orden:'ordenes',acta:'actas',tarea:'tareas',baja:'bajas'};
-  cfm2('¿Eliminar este registro?\nNo se puede deshacer.',async()=>{
-    await del(sm[type],id);toast('Eliminado','ok');await refreshView();
-  });
+  cfm2('¿Eliminar este registro?\nNo se puede deshacer.',async()=>{await del(sm[type],id);toast('Eliminado','ok');await refreshView()});
 }
-
 async function refreshView(){
-  if(curSrv)buildTabs();
-  const sp=g('stockPanel');if(sp.style.display==='block')await renderStock('');
+  if(curSrv){if(curMod)await openMod(curMod);await updateModCounts()}
+  if(g('stockPanel').style.display==='block')await renderStock('');
   await renderDash();
 }
 
-// ════════════════════════════════════
+// ════════════════════════════
 // ALERTS
-// ════════════════════════════════════
+// ════════════════════════════
 async function checkAlerts(){
   try{
-    const eqs=await getAll('equipos');
-    const hoy=today();
+    const eqs=await getAll('equipos');const hoy=today();
     const vn=eqs.filter(e=>{const d=diff(hoy,toD(e.proximoMant));return d!==null&&d<0});
     const pr=eqs.filter(e=>{const d=diff(hoy,toD(e.proximoMant));return d!==null&&d>=0&&d<30});
     const b=g('alertBan');
     if(vn.length||pr.length){
       b.style.display='block';
-      b.innerHTML=`⚠️ <b>${vn.length} equipos</b> con mantenimiento VENCIDO · <b>${pr.length}</b> vencen en &lt;30 días`;
+      b.innerHTML=`⚠️ <b>${vn.length} equipos</b> con mantenimiento VENCIDO · <b>${pr.length}</b> vencen en menos de 30 días`;
     }else{b.style.display='none'}
   }catch(e){}
 }
 
-// ════════════════════════════════════
+// ════════════════════════════
 // NAV
-// ════════════════════════════════════
+// ════════════════════════════
 function goHome(){
-  hideAll();
-  g('dash').style.display='grid'; // ALWAYS grid, never block
-  showPicker(true);
-  curSrv=null;
+  g('srvView').style.display='none';
+  g('stockPanel').style.display='none';
+  g('adminPanel').style.display='none';
+  g('dash').style.display='grid';
+  curSrv=null;curMod=null;
   renderDash();checkAlerts();
 }
 
-// ════════════════════════════════════
+// ════════════════════════════
 // CONFIRM / TOAST
-// ════════════════════════════════════
-function cfm2(msg,cb){
-  g('cfmMsg').textContent=msg;g('cfm').classList.add('on');
-  g('cfmOk').onclick=()=>{closeCfm();cb()};
-}
+// ════════════════════════════
+function cfm2(msg,cb){g('cfmMsg').textContent=msg;g('cfm').classList.add('on');g('cfmOk').onclick=()=>{closeCfm();cb()}}
 function closeCfm(){g('cfm').classList.remove('on')}
-
 function toast(msg,type='ok'){
-  const el=document.createElement('div');
-  el.className=`tm ${type}`;el.textContent=msg;
-  g('tst').appendChild(el);
-  setTimeout(()=>el.remove(),2800);
+  const el=document.createElement('div');el.className=`tm ${type}`;el.textContent=msg;
+  g('tst').appendChild(el);setTimeout(()=>el.remove(),2800);
 }
 
-// ════════════════════════════════════
+// ════════════════════════════
 // UTILS
-// ════════════════════════════════════
+// ════════════════════════════
 const g=id=>document.getElementById(id);
-
-function hideAll(){
-  ['dash','srvView','stockPanel','adminPanel'].forEach(id=>{
-    const el=g(id);if(el)el.style.display='none';
-  });
-}
-
 function es(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}
-
 function toD(v){
-  if(!v)return null;
-  if(v instanceof Date)return isNaN(v)?null:v;
-  if(typeof v==='string'){
-    let s=v.trim();
-    if(s.includes('/')){const p=s.split('/');if(p.length===3)s=`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`}
-    const d=new Date(s);return isNaN(d)?null:d;
-  }
+  if(!v)return null;if(v instanceof Date)return isNaN(v)?null:v;
+  if(typeof v==='string'){let s=v.trim();if(s.includes('/')){const p=s.split('/');if(p.length===3)s=`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`}const d=new Date(s);return isNaN(d)?null:d}
   return null;
 }
 function fd(d){if(!d)return'—';const dt=d instanceof Date?d:toD(d);if(!dt)return'—';return dt.toLocaleDateString('es-AR')}
@@ -1434,18 +1210,16 @@ function dv(v){const d=toD(v);if(!d)return'';try{return d.toISOString().split('T
 function diff(a,b){
   if(!a||!b)return null;
   const da=a instanceof Date?a:toD(a),db=b instanceof Date?b:toD(b);
-  if(!da||!db)return null;
-  return Math.round((db-da)/864e5);
+  if(!da||!db)return null;return Math.round((db-da)/864e5);
 }
 function dchip(d){
   if(d===null)return'<span style="color:var(--dim);font-size:.65rem">—</span>';
-  if(d<0)return`<span class="dc" style="background:rgba(229,57,53,.2);color:#ff8a8a">${d}d</span>`;
-  if(d<30)return`<span class="dc" style="background:rgba(245,124,0,.2);color:#ffb74d">${d}d</span>`;
-  return`<span class="dc" style="background:rgba(46,125,50,.14);color:#81c784">${d}d</span>`;
+  if(d<0)return`<span class="dc" style="background:var(--roli);color:var(--ro);border:1px solid var(--roba)">${d}d</span>`;
+  if(d<30)return`<span class="dc" style="background:var(--nali);color:var(--na);border:1px solid var(--naba)">${d}d</span>`;
+  return`<span class="dc" style="background:var(--veli);color:var(--ve2);border:1px solid var(--veba)">${d}d</span>`;
 }
 function pill(v,t){
-  if(!v)return'<span class="pill pdim">—</span>';
-  const lv=v.toLowerCase();
+  if(!v)return'<span class="pill pdim">—</span>';const lv=v.toLowerCase();
   if(t==='eq'){
     if(lv==='en servicio')return`<span class="pill pok">${v}</span>`;
     if(lv.includes('fabrica')||lv.includes('repuesto'))return`<span class="pill pwn">${v}</span>`;
@@ -1467,18 +1241,17 @@ function pill(v,t){
   }
   return`<span class="pill pdim">${v}</span>`;
 }
-
 function nSrv(s){
   const u=(s||'').trim().toUpperCase();
-  if(GASTRO_ALIAS.includes(u))return'GASTROENTEROLOGIA';
+  if(GASTRO.includes(u))return'GASTROENTEROLOGIA';
   const map={'PROCURACIÓN':'PROCURACION','HEMATOLOGÍA Y HEMOTERAPIA':'HEMATOLOGIA Y HEMOTERAPIA','NEUROCIRUGÍA':'NEUROCIRUGIA','NEUROLOGÍA':'NEUROLOGIA','ANATOMÍA PATOLÓGICA':'ANATOMIA PATOLOGICA','CLÍNICA MÉDICA':'CLINICA MEDICA'};
   return map[u]||u;
 }
 function mSrv(a,b){return nSrv(a)===nSrv(b)}
 
-// ════════════════════════════════════
+// ════════════════════════════
 // STARTUP
-// ════════════════════════════════════
+// ════════════════════════════
 (async()=>{
   try{
     initPWA();
@@ -1491,11 +1264,10 @@ function mSrv(a,b){return nSrv(a)===nSrv(b)}
       await boot();
     }
   }catch(e){
-    document.body.innerHTML=`<div style="color:#ff8a8a;padding:1.5rem;font-size:.82rem;max-width:420px;margin:2rem auto;background:#1e1e36;border-radius:12px;border:1px solid #2a2a4a">
-      <b style="font-size:1rem">⚠️ Error de inicio</b><br><br>
-      ${e.message}<br><br>
-      <b>Solución:</b> Subí el archivo a GitHub y abrilo desde la URL de Vercel (área-6.vercel.app).<br>
-      IndexedDB no funciona abriendo el archivo directamente desde Descargas.
+    document.body.innerHTML=`<div style="color:#d32f2f;padding:1.5rem;font-size:.84rem;max-width:420px;margin:2rem auto;background:#fff;border-radius:12px;border:2px solid #ffd5d5;box-shadow:0 4px 16px rgba(0,0,0,.1)">
+      <b style="font-size:1rem">⚠️ Error de inicio: ${e.message}</b><br><br>
+      El archivo debe abrirse desde un servidor web (Vercel), no directamente desde Descargas.<br>
+      URL: <b>area-6.vercel.app</b>
     </div>`;
   }
 })();
