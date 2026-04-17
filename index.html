@@ -487,8 +487,44 @@ function doLogout(){localStorage.removeItem('a6u');location.reload()}
 // ════════════════════════════════════
 async function boot(){
   showLoad('Cargando datos...');
-  try{await renderDash();await loadDates();await checkAlerts()}
-  finally{hideLoad()}
+  try{
+    await autoMigrate();
+    await renderDash();await loadDates();await checkAlerts()
+  }finally{hideLoad()}
+}
+
+// Auto-migrate from A6v5 if new DB is empty
+async function autoMigrate(){
+  try{
+    const eqs=await getAll('equipos');
+    if(eqs.length>0)return; // already has data
+    // Try to read from old DB
+    const OLD_STORES=['equipos','expedientes','ordenes','actas','tareas','bajas','stock'];
+    const oldDb=await new Promise((ok,er)=>{
+      const r=indexedDB.open('A6v5',1);
+      r.onsuccess=e=>ok(e.target.result);
+      r.onerror=()=>ok(null);
+      r.onblocked=()=>ok(null);
+    });
+    if(!oldDb)return;
+    let migrated=0;
+    for(const s of OLD_STORES){
+      try{
+        const rows=await new Promise(ok=>{
+          const tx=oldDb.transaction(s,'readonly');
+          const req=tx.objectStore(s).getAll();
+          req.onsuccess=e=>ok(e.target.result||[]);
+          req.onerror=()=>ok([]);
+        });
+        if(rows.length){await bulkPut(s,rows);migrated+=rows.length}
+      }catch(e){}
+    }
+    oldDb.close();
+    if(migrated>0){
+      await setMeta('migrated_from','A6v5');
+      toast('✅ '+migrated+' registros recuperados automáticamente','ok');
+    }
+  }catch(e){console.warn('Migration skipped:',e.message)}
 }
 function showLoad(m=''){g('loadScr').style.display='flex';g('loadMsg').textContent=m}
 function hideLoad(){g('loadScr').style.display='none'}
@@ -549,47 +585,69 @@ async function openSrv(id){
 }
 
 async function renderSubServices(){
-  const eqs=await getAll('equipos');
-  const srvEqs=eqs.filter(e=>mSrv(e.servicio,curSrv));
-  const hoy=today();
-  // Extract unique sub-services
-  const subSet=new Set();
-  srvEqs.forEach(e=>{if(e.subServicio&&e.subServicio.trim())subSet.add(e.subServicio.trim())});
-  const subs=Array.from(subSet).sort();
+  try{
+    const eqs=await getAll('equipos');
+    const srvEqs=eqs.filter(e=>mSrv(e.servicio,curSrv));
+    const hoy=today();
+    const subSet=new Set();
+    srvEqs.forEach(e=>{if(e.subServicio&&e.subServicio.trim())subSet.add(e.subServicio.trim())});
+    const subs=Array.from(subSet).sort();
 
-  let html='';
-  // Sub-service cards
-  subs.forEach(sub=>{
-    const eqs2=srvEqs.filter(e=>(e.subServicio||'').trim()===sub);
-    let al=0,wn=0;
-    eqs2.forEach(e=>{const d=diff(hoy,toD(e.proximoMant));if(d!==null&&d<0)al++;else if(d!==null&&d<30)wn++;});
-    const cls=al?'al':wn?'wn':'ok';
-    const stlbl=al?'⚠ ALERTA':wn?'⏰ ADVERTENCIA':'✓ OK';
-    html+=`<div class="scard ${cls}" onclick="openSubSrv('${esc(sub)}')">
+    // If no sub-services at all, skip this layer and go directly to modules
+    // using PEDIDOS_GEN as the sub-service scope
+    if(subs.length===0){
+      // Show a single "Ver todo el servicio" card + Pedidos Generales
+      const el=g('subSrvGrid');
+      if(el) el.innerHTML=`
+        <div class="scard ok" onclick="openSubSrv('${PEDIDOS_GEN}')" style="grid-column:1/-1">
+          <div class="strip"></div>
+          <div class="stlbl">✓ SIN SUB-SERVICIOS</div>
+          <div class="ico">📋</div>
+          <h3>Ver todo el servicio</h3>
+          <div class="cnts">
+            <span class="bx baz">${srvEqs.length} equipos</span>
+            <span class="bx bdim">Tareas · Compras · RIC-58</span>
+          </div>
+        </div>`;
+      return;
+    }
+
+    let html='';
+    subs.forEach(sub=>{
+      const eqs2=srvEqs.filter(e=>(e.subServicio||'').trim()===sub);
+      let al=0,wn=0;
+      eqs2.forEach(e=>{const d=diff(hoy,toD(e.proximoMant));if(d!==null&&d<0)al++;else if(d!==null&&d<30)wn++;});
+      const cls=al?'al':wn?'wn':'ok';
+      const stlbl=al?'⚠ ALERTA':wn?'⏰ ADVERTENCIA':'✓ OK';
+      html+=`<div class="scard ${cls}" onclick="openSubSrv('${esc(sub)}')">
+        <div class="strip"></div>
+        <div class="stlbl">${stlbl}</div>
+        <div class="ico">🏷️</div>
+        <h3>${esc(sub)}</h3>
+        <div class="cnts">
+          <span class="bx baz">${eqs2.length} eq.</span>
+          ${al?`<span class="bx bro">⚠${al}</span>`:''}
+          ${wn?`<span class="bx bna">⏰${wn}</span>`:''}
+        </div>
+      </div>`;
+    });
+    const genEqs=srvEqs.filter(e=>!e.subServicio||!e.subServicio.trim());
+    html+=`<div class="scard ok" onclick="openSubSrv('${PEDIDOS_GEN}')">
       <div class="strip"></div>
-      <div class="stlbl">${stlbl}</div>
-      <div class="ico">🏷️</div>
-      <h3>${esc(sub)}</h3>
+      <div class="stlbl">📌 GENERAL</div>
+      <div class="ico">📦</div>
+      <h3>Pedidos Generales</h3>
       <div class="cnts">
-        <span class="bx baz">${eqs2.length} eq.</span>
-        ${al?`<span class="bx bro">⚠${al}</span>`:''}
-        ${wn?`<span class="bx bna">⏰${wn}</span>`:''}
+        ${genEqs.length?`<span class="bx baz">${genEqs.length} eq.</span>`:''}
+        <span class="bx bdim">Tareas · Compras</span>
       </div>
     </div>`;
-  });
-  // "Pedidos Generales" card — always present
-  const genEqs=srvEqs.filter(e=>!e.subServicio||!e.subServicio.trim());
-  html+=`<div class="scard ok" onclick="openSubSrv('${PEDIDOS_GEN}')">
-    <div class="strip"></div>
-    <div class="stlbl">📌 GENERAL</div>
-    <div class="ico">📦</div>
-    <h3>Pedidos Generales</h3>
-    <div class="cnts">
-      ${genEqs.length?`<span class="bx baz">${genEqs.length} eq.</span>`:''}
-      <span class="bx bdim">Tareas · Compras</span>
-    </div>
-  </div>`;
-  g('subSrvGrid').innerHTML=html;
+    const el=g('subSrvGrid');
+    if(el) el.innerHTML=html;
+  }catch(e){
+    const el=g('subSrvGrid');
+    if(el) el.innerHTML=`<div style="grid-column:1/-1"><div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div></div>`;
+  }
 }
 
 // ════════════════════════════════════
