@@ -278,6 +278,7 @@ td{padding:.4rem .52rem;vertical-align:middle}
     <div class="hlogo">A6</div>
     <div class="htit">ÁREA 6<small>Ing. Clínica · Rawson</small></div>
     <div class="hsp"></div>
+    <button class="hib" onclick="showGlobalTareas()" title="Ver todas las tareas">✅</button>
     <button class="hib" onclick="showStock()">📦</button>
     <button class="hib" onclick="showAdmin()">⚙️</button>
     <button class="hib" onclick="doLogout()" style="opacity:.85">⏏</button>
@@ -330,6 +331,13 @@ td{padding:.4rem .52rem;vertical-align:middle}
       <div id="stkCont"></div>
     </div>
 
+    <!-- GLOBAL TAREAS VIEW -->
+    <div id="globalView" style="display:none">
+      <button class="volver" onclick="goHome()">← Volver</button>
+      <div class="sectit"><span>✅</span> Todas las Tareas · Registros globales</div>
+      <div id="globalContent"></div>
+    </div>
+
     <!-- ADMIN -->
     <div id="adminPanel" style="display:none">
       <button class="volver" onclick="goHome()">← Volver</button>
@@ -361,7 +369,24 @@ td{padding:.4rem .52rem;vertical-align:middle}
           <button class="btn bgr" onclick="cancelPrev()">✕ Cancelar</button>
         </div>
       </div>
-      <div style="margin-top:1rem;padding-top:.8rem;border-top:1.5px solid var(--brd)">
+      <!-- EXPORT SECTION -->
+      <div style="margin-top:.8rem;padding-top:.8rem;border-top:1.5px solid var(--brd)">
+        <div class="stitle">Exportar a Excel</div>
+        <div style="background:var(--az3);border:1.5px solid #b3c8f8;border-radius:10px;padding:.65rem .85rem;margin-bottom:.6rem;font-size:.74rem;color:var(--az)">
+          📤 Genera un archivo .xlsx con todos los datos actuales de la app para actualizar <b>SKINET</b> y mantener ambos sistemas sincronizados.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.45rem;margin-bottom:.5rem">
+          <button class="btn baz2" onclick="exportExcel('all')">📥 Exportar todo</button>
+          <button class="btn bgr" onclick="exportExcel('equipos')">🩺 Solo Equipos</button>
+          <button class="btn bgr" onclick="exportExcel('tareas')">✅ Tareas / RIC01</button>
+          <button class="btn bgr" onclick="exportExcel('expedientes')">📁 Expedientes</button>
+          <button class="btn bgr" onclick="exportExcel('ric58')">📋 RIC-58</button>
+          <button class="btn bgr" onclick="exportExcel('compras')">🛒 Compras / OC</button>
+        </div>
+        <div id="exportMsg" style="font-size:.72rem;color:var(--ve2);min-height:1rem"></div>
+      </div>
+
+      <div style="margin-top:.8rem;padding-top:.8rem;border-top:1.5px solid var(--brd)">
         <div class="stitle">Datos locales</div>
         <div style="display:flex;gap:.42rem;flex-wrap:wrap">
           <button class="btn bgr" onclick="dbSt()">📊 Conteos</button>
@@ -1529,7 +1554,7 @@ async function checkAlerts(){
 // NAVIGATION
 // ════════════════════════════════════
 function showView(id){
-  ['dashView','serviceView','modView','stockPanel','adminPanel'].forEach(v=>{
+  ['dashView','serviceView','modView','stockPanel','adminPanel','globalView'].forEach(v=>{
     const el=g(v);
     if(el)el.style.display='none';
   });
@@ -1613,6 +1638,168 @@ function nSrv(s){
   return map[u]||u;
 }
 function mSrv(a,b){return nSrv(a)===nSrv(b)}
+
+// ════════════════════════════════════
+// GLOBAL TAREAS VIEW
+// ════════════════════════════════════
+async function showGlobalTareas(){
+  showView('globalView');
+  curSrv=null;curSubSrv=null;curMod=null;
+  const el=g('globalContent');
+  el.innerHTML='<div style="color:var(--dim);font-size:.78rem;padding:.4rem">Cargando...</div>';
+  try{
+    const [tareas, rics, compras] = await Promise.all([
+      getAll('tareas'), getAll('ric58'), getAll('compras')
+    ]);
+    // Group tareas by service
+    const byServ={};
+    tareas.forEach(t=>{
+      const k=t.servicio||'Sin servicio';
+      if(!byServ[k])byServ[k]=[];
+      byServ[k].push(t);
+    });
+    let html='';
+    // Summary cards
+    const pending_sk=tareas.filter(t=>t.tipo==='RIC01'&&!t.skinet);
+    const ric58env=rics.filter(r=>r.estado==='Enviado');
+    const ocUrg=compras.filter(c=>c.tipo==='Orden de Provisión (OC)'&&c.estadoOC==='Sin Oferentes');
+    html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin-bottom:.7rem">
+      <div style="background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:.6rem .5rem;text-align:center;box-shadow:var(--sh)">
+        <div style="font-size:1.2rem">✅</div>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--az)">${tareas.length}</div>
+        <div style="font-size:.62rem;color:var(--dim)">Tareas total</div>
+      </div>
+      <div style="background:${pending_sk.length?'var(--nali)':'var(--s1)'};border:1.5px solid ${pending_sk.length?'var(--naba)':'var(--brd)'};border-radius:10px;padding:.6rem .5rem;text-align:center;box-shadow:var(--sh)">
+        <div style="font-size:1.2rem">📱</div>
+        <div style="font-size:1.1rem;font-weight:700;color:${pending_sk.length?'var(--na)':'var(--ve2)'}">${pending_sk.length}</div>
+        <div style="font-size:.62rem;color:var(--dim)">Pend. SKINET</div>
+      </div>
+      <div style="background:${ocUrg.length?'var(--roli)':'var(--s1)'};border:1.5px solid ${ocUrg.length?'var(--roba)':'var(--brd)'};border-radius:10px;padding:.6rem .5rem;text-align:center;box-shadow:var(--sh)">
+        <div style="font-size:1.2rem">🚨</div>
+        <div style="font-size:1.1rem;font-weight:700;color:${ocUrg.length?'var(--ro)':'var(--ve2)'}">${ocUrg.length}</div>
+        <div style="font-size:.62rem;color:var(--dim)">OC Sin ofert.</div>
+      </div>
+    </div>`;
+
+    // RIC01 pending SKINET
+    if(pending_sk.length){
+      html+=`<div class="warnbx" style="margin-bottom:.6rem">⚠️ <b>${pending_sk.length} tareas RIC01</b> pendientes de registrar en SKINET:</div>`;
+      html+=`<div class="tw" style="margin-bottom:.7rem"><table>
+        <thead><tr><th>Descripción</th><th>Servicio</th><th>Fecha</th><th>Usuario</th></tr></thead>
+        <tbody>${pending_sk.map(t=>`<tr>
+          <td style="font-size:.72rem;max-width:160px">${es(t.descripcion)}</td>
+          <td style="font-size:.64rem">${es(t.servicio)}</td>
+          <td style="font-size:.63rem">${t.fecha||'—'}</td>
+          <td style="font-size:.63rem">${es(t.usuario)}</td>
+        </tr>`).join('')}</tbody></table></div>`;
+    }
+
+    // All tareas grouped by service
+    const srvKeys=Object.keys(byServ).sort();
+    srvKeys.forEach(srvKey=>{
+      const rows=byServ[srvKey];
+      const srvInfo=SRVS.find(s=>mSrv(s.id,srvKey));
+      html+=`<div class="stitle">${srvInfo?srvInfo.ico+' ':''} ${es(srvKey)} (${rows.length})</div>`;
+      html+=`<div class="tw" style="margin-bottom:.6rem"><table>
+        <thead><tr><th>Tipo</th><th>Descripción</th><th>SKINET</th><th>Sub-Serv.</th><th>Fecha</th></tr></thead>
+        <tbody>${rows.map(t=>{
+          const tipo=t.tipo||'Tarea General';
+          const tipoPill=tipo==='RIC01'?`<span class="pill pok">RIC01</span>`:tipo==='Compra'?`<span class="pill ppu">Compra</span>`:`<span class="pill pin">Tarea</span>`;
+          return`<tr>
+            <td>${tipoPill}</td>
+            <td style="font-size:.72rem;max-width:160px">${es(t.descripcion)}${t.detalle?`<br><span style="color:var(--dim);font-size:.62rem">${es(t.detalle)}</span>`:''}
+            </td>
+            <td>${t.skinet?'<span class="pill pok">✓</span>':'<span class="pill pwn">⚠</span>'}</td>
+            <td style="font-size:.63rem">${es(t.subServicio||'—')}</td>
+            <td style="font-size:.62rem">${t.fecha||'—'}</td>
+          </tr>`;
+        }).join('')}</tbody></table></div>`;
+    });
+
+    if(!tareas.length) html=`<div class="emp"><div class="ei">✅</div>Sin tareas registradas.<br>Ingresá a cada servicio para agregar tareas.</div>`;
+    el.innerHTML=html;
+  }catch(e){el.innerHTML=`<div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div>`}
+}
+
+// ════════════════════════════════════
+// EXPORT TO EXCEL
+// ════════════════════════════════════
+async function exportExcel(tipo){
+  const msg=g('exportMsg');
+  if(msg)msg.textContent='Generando archivo...';
+  try{
+    const wb=XLSX.utils.book_new();
+    const hoy=new Date().toLocaleDateString('es-AR').replace(/\//g,'-');
+
+    async function addSheet(name, store, cols, mapper){
+      const rows=await getAll(store);
+      if(!rows.length)return;
+      const data=[cols, ...rows.map(mapper)];
+      const ws=XLSX.utils.aoa_to_sheet(data);
+      // Header style (bold) — basic
+      ws['!cols']=cols.map(()=>({wch:20}));
+      XLSX.utils.book_append_sheet(wb, ws, name);
+    }
+
+    if(tipo==='all'||tipo==='equipos'){
+      await addSheet('Equipos','equipos',
+        ['Descripción','Marca/Modelo','N° Serie','Servicio','Sub Servicio','Tipo Equipo','Estado','Último Mant.','Próx. Mant.','Proveedor','Fecha Compra','Garantía (meses)','Área','Importado','Modificado'],
+        r=>[r.descrip,r.marca,r.serie,r.servicio,r.subServicio,r.tipoEq||'Hospital',r.estado,r.ultimoMant,r.proximoMant,r.proveedor,r.fechaCompra,r.garantiaMeses||12,r.area||'AREA 6',r.importado||'',r.mod||'']
+      );
+    }
+    if(tipo==='all'||tipo==='expedientes'){
+      await addSheet('Expedientes','expedientes',
+        ['N° Expediente','Servicio','Sub Servicio','Descripción','Fecha Inicio','Estado','Responsable','Modificado'],
+        r=>[r.numero,r.servicio,r.subServicio,r.descripcion,r.fechaInicio,r.estado,r.responsable,r.mod||'']
+      );
+    }
+    if(tipo==='all'||tipo==='tareas'){
+      await addSheet('Tareas_RIC01','tareas',
+        ['Tipo','Servicio','Sub Servicio','Descripción','Detalle','SKINET Registrado','Fecha','Usuario'],
+        r=>[r.tipo||'Tarea General',r.servicio,r.subServicio,r.descripcion,r.detalle||'',r.skinet?'SÍ':'NO',r.fecha||'',r.usuario||'']
+      );
+    }
+    if(tipo==='all'||tipo==='ric58'){
+      await addSheet('RIC-58','ric58',
+        ['N° RIC-58','Servicio','Sub Servicio','Descripción','Fecha Envío','Estado','Expediente Generado','Observaciones','Usuario'],
+        r=>[r.numero,r.servicio,r.subServicio,r.descripcion,r.fechaEnvio,r.estado,r.expGenerado||'',r.observaciones||'',r.usuario||'']
+      );
+    }
+    if(tipo==='all'||tipo==='compras'){
+      await addSheet('Compras_OC','compras',
+        ['Descripción','Servicio','Sub Servicio','Tipo','N° OC','Estado OC','Observaciones','Fecha','Usuario'],
+        r=>[r.descripcion,r.servicio,r.subServicio,r.tipo,r.nroc||'',r.estadoOC||'',r.observaciones||'',r.fecha||'',r.usuario||'']
+      );
+    }
+    if(tipo==='all'){
+      await addSheet('Ordenes','ordenes',
+        ['N° Orden','Servicio','Sub Servicio','Descripción','Fecha Inicio','Estado','Responsable'],
+        r=>[r.numero,r.servicio,r.subServicio,r.descripcion,r.fechaInicio,r.estado,r.responsable||'']
+      );
+      await addSheet('Bajas','bajas',
+        ['Equipo','Servicio','Sub Servicio','Motivo','Observaciones','Fecha','Usuario'],
+        r=>[r.equipo,r.servicio,r.subServicio||'',r.motivo,r.observaciones||r.descripcion||'',r.fecha||'',r.usuario||'']
+      );
+      await addSheet('Stock','stock',
+        ['Descripción','Área','Stock','Entradas','Salidas'],
+        r=>[r.descrip,r.area||'AREA 6',r.stock||0,r.cantIn||0,r.cantOut||0]
+      );
+    }
+
+    if(wb.SheetNames.length===0){
+      if(msg)msg.textContent='⚠️ Sin datos para exportar en esa categoría.';
+      return;
+    }
+
+    const nombres={all:'Area6_Completo',equipos:'Area6_Equipos',tareas:'Area6_Tareas_RIC01',expedientes:'Area6_Expedientes',ric58:'Area6_RIC58',compras:'Area6_Compras_OC'};
+    XLSX.writeFile(wb, `${nombres[tipo]||'Area6'}_${hoy}.xlsx`);
+    if(msg)msg.textContent=`✅ Archivo descargado: ${nombres[tipo]}_${hoy}.xlsx`;
+    toast('📥 Excel generado y descargado','ok');
+  }catch(e){
+    if(msg)msg.textContent='⚠️ Error: '+e.message;
+    toast('Error al exportar: '+e.message,'er');
+  }
+}
 
 // ════════════════════════════════════
 // STARTUP
