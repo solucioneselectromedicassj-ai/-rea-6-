@@ -619,11 +619,11 @@ async function renderSubServices(){
       eqs2.forEach(e=>{const d=diff(hoy,toD(e.proximoMant));if(d!==null&&d<0)al++;else if(d!==null&&d<30)wn++;});
       const cls=al?'al':wn?'wn':'ok';
       const stlbl=al?'⚠ ALERTA':wn?'⏰ ADVERTENCIA':'✓ OK';
-      html+=`<div class="scard ${cls}" onclick="openSubSrv('${esc(sub)}')">
+      html+=`<div class="scard ${cls}" onclick="openSubSrv('${es(sub)}')">
         <div class="strip"></div>
         <div class="stlbl">${stlbl}</div>
         <div class="ico">🏷️</div>
-        <h3>${esc(sub)}</h3>
+        <h3>${es(sub)}</h3>
         <div class="cnts">
           <span class="bx baz">${eqs2.length} eq.</span>
           ${al?`<span class="bx bro">⚠${al}</span>`:''}
