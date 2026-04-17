@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Recuperar datos ÁREA 6</title>
+<style>
+body{font-family:'Segoe UI',sans-serif;background:#f0f2f8;color:#1a1a2e;padding:1.5rem;max-width:500px;margin:auto}
+h2{color:#003d82;margin-bottom:.5rem}
+p{font-size:.85rem;color:#6b7280;margin-bottom:1rem;line-height:1.5}
+.card{background:#fff;border-radius:12px;padding:1.2rem;margin-bottom:1rem;border:1.5px solid #dde1f0;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.row{display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid #eef0f8;font-size:.82rem}
+.row:last-child{border:none}
+.label{color:#6b7280;font-weight:600}
+.count{font-weight:700;color:#003d82}
+.count.ok{color:#2e7d32}
+.count.zero{color:#bbb}
+button{width:100%;padding:.8rem;background:#003d82;color:#fff;border:none;border-radius:10px;font-size:.9rem;font-weight:700;cursor:pointer;margin-top:.5rem;transition:background .2s}
+button:active{background:#0056b3}
+button:disabled{background:#bbb;cursor:not-allowed}
+.result{background:#f0fff4;border:1.5px solid #b3f0c0;border-radius:10px;padding:1rem;margin-top:.8rem;font-size:.82rem;color:#1b5e20;line-height:1.6;display:none}
+.err{background:#fff0f0;border-color:#ffd5d5;color:#d32f2f}
+.step{display:flex;align-items:center;gap:.5rem;padding:.4rem 0;font-size:.8rem}
+.step .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.dot.ok{background:#2e7d32}.dot.er{background:#d32f2f}.dot.wait{background:#dde1f0}.dot.run{background:#f57c00;animation:pulse .6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+</style>
+</head>
+<body>
+<h2>🔄 Recuperar Datos ÁREA 6</h2>
+<p>Tus datos <b>no se borraron</b>. Siguen guardados en el navegador bajo la versión anterior de la app. Esta herramienta los mueve a la versión nueva.</p>
+
+<div class="card">
+  <div style="font-weight:700;margin-bottom:.7rem;font-size:.88rem">📊 Datos encontrados en versión anterior (A6v5)</div>
+  <div id="oldCounts"><div style="color:#aaa;font-size:.8rem">Analizando...</div></div>
+</div>
+
+<div class="card" id="stepsCard" style="display:none">
+  <div style="font-weight:700;margin-bottom:.7rem;font-size:.88rem">⚙️ Progreso de recuperación</div>
+  <div id="steps"></div>
+</div>
+
+<button id="btnRecover" onclick="doRecover()" disabled>🔄 Recuperar y migrar datos</button>
+
+<div class="result" id="result"></div>
+
+<script>
+const OLD_DB = 'A6v5';
+const NEW_DB = 'A6v6';
+const STORES = ['equipos','expedientes','ric58','ordenes','actas','tareas','compras','bajas','stock','meta'];
+const OLD_STORES = ['equipos','expedientes','ordenes','actas','tareas','bajas','stock','meta'];
+
+let oldCounts = {};
+
+// ── OPEN DB ──
+function openDB(name, version, stores){
+  return new Promise((ok,er)=>{
+    const r = indexedDB.open(name, version);
+    r.onupgradeneeded = e => {
+      const d = e.target.result;
+      stores.forEach(s=>{
+        if(!d.objectStoreNames.contains(s))
+          d.createObjectStore(s, s==='meta'?{keyPath:'key'}:{keyPath:'id',autoIncrement:true});
+      });
+    };
+    r.onsuccess = e => ok(e.target.result);
+    r.onerror   = e => er(e.target.error);
+  });
+}
+
+function getAll(db, store){
+  return new Promise((ok,er)=>{
+    try{
+      const tx = db.transaction(store,'readonly');
+      const req = tx.objectStore(store).getAll();
+      req.onsuccess = e => ok(e.target.result||[]);
+      req.onerror   = () => ok([]);
+    }catch{ ok([]) }
+  });
+}
+
+function bulkPut(db, store, rows){
+  return new Promise((ok,er)=>{
+    if(!rows.length){ok();return}
+    try{
+      const tx = db.transaction(store,'readwrite');
+      const os = tx.objectStore(store);
+      rows.forEach(r => os.put(r));
+      tx.oncomplete = ok;
+      tx.onerror = e => er(e.target.error);
+    }catch(e){ er(e) }
+  });
+}
+
+function clr(db, store){
+  return new Promise((ok,er)=>{
+    try{
+      const tx = db.transaction(store,'readwrite');
+      tx.objectStore(store).clear();
+      tx.oncomplete = ok;
+      tx.onerror = er;
+    }catch{ ok() }
+  });
+}
+
+// ── ANALYZE OLD DB ──
+async function analyze(){
+  try{
+    const oldDb = await openDB(OLD_DB, 1, OLD_STORES);
+    let html = '';
+    let total = 0;
+    for(const s of OLD_STORES){
+      try{
+        const rows = await getAll(oldDb, s);
+        oldCounts[s] = rows.length;
+        total += rows.length;
+        if(s!=='meta'){
+          html += `<div class="row">
+            <span class="label">${storeIcon(s)} ${s}</span>
+            <span class="count ${rows.length>0?'ok':'zero'}">${rows.length} registros</span>
+          </div>`;
+        }
+      }catch{ oldCounts[s]=0 }
+    }
+    oldDb.close();
+    document.getElementById('oldCounts').innerHTML = html || '<div style="color:#d32f2f;font-size:.8rem">⚠️ No se encontró la base de datos anterior. Puede que los datos ya hayan sido migrados o que uses otro navegador.</div>';
+    if(total > 0){
+      document.getElementById('btnRecover').disabled = false;
+      document.getElementById('btnRecover').textContent = `🔄 Recuperar ${total} registros`;
+    } else {
+      document.getElementById('btnRecover').textContent = 'No hay datos para recuperar';
+    }
+  }catch(e){
+    document.getElementById('oldCounts').innerHTML = `<div style="color:#d32f2f;font-size:.8rem">No se encontró base de datos anterior: ${e.message}<br>Es posible que los datos ya estén en la versión nueva.</div>`;
+  }
+}
+
+function storeIcon(s){
+  const m={equipos:'🩺',expedientes:'📁',ric58:'📋',ordenes:'🔧',actas:'📄',tareas:'✅',compras:'🛒',bajas:'🗑️',stock:'📦',meta:'⚙️'};
+  return m[s]||'📂';
+}
+
+// ── RECOVER ──
+async function doRecover(){
+  const btn = document.getElementById('btnRecover');
+  btn.disabled = true;
+  btn.textContent = 'Recuperando...';
+  document.getElementById('stepsCard').style.display = 'block';
+
+  const stepsEl = document.getElementById('steps');
+  const log = (label, state, detail='') => {
+    const id = 'step_'+label.replace(/\s/g,'_');
+    let el = document.getElementById(id);
+    if(!el){
+      el = document.createElement('div');
+      el.className='step';el.id=id;
+      stepsEl.appendChild(el);
+    }
+    const dotCls = state==='ok'?'ok':state==='er'?'er':state==='run'?'run':'wait';
+    el.innerHTML = `<div class="dot ${dotCls}"></div><span>${label}${detail?' · <b>'+detail+'</b>':''}</span>`;
+  };
+
+  try{
+    log('Abriendo base de datos anterior','run');
+    const oldDb = await openDB(OLD_DB, 1, OLD_STORES);
+    log('Abriendo base de datos anterior','ok','A6v5 encontrada');
+
+    log('Abriendo base de datos nueva','run');
+    const newDb = await openDB(NEW_DB, 1, STORES);
+    log('Abriendo base de datos nueva','ok','A6v6 lista');
+
+    let totalMigrated = 0;
+
+    for(const store of OLD_STORES){
+      if(store === 'meta') continue;
+      log(`Migrando ${store}`,'run');
+      try{
+        const rows = await getAll(oldDb, store);
+        if(rows.length > 0){
+          // Don't overwrite if new DB already has data for this store
+          const existing = await getAll(newDb, store);
+          if(existing.length === 0){
+            await bulkPut(newDb, store, rows);
+            totalMigrated += rows.length;
+            log(`Migrando ${store}`,'ok',`${rows.length} registros`);
+          } else {
+            // Merge: add records from old that aren't in new
+            const newIds = new Set(existing.map(r=>String(r.id)));
+            const toAdd = rows.filter(r=>!newIds.has(String(r.id)));
+            if(toAdd.length > 0){
+              await bulkPut(newDb, store, toAdd);
+              totalMigrated += toAdd.length;
+              log(`Migrando ${store}`,'ok',`${toAdd.length} nuevos (${existing.length} existentes preservados)`);
+            } else {
+              log(`Migrando ${store}`,'ok','Sin cambios (datos ya migrados)');
+            }
+          }
+        } else {
+          log(`Migrando ${store}`,'ok','Sin datos');
+        }
+      }catch(e){
+        log(`Migrando ${store}`,'er',e.message);
+      }
+    }
+
+    oldDb.close();
+    newDb.close();
+
+    const res = document.getElementById('result');
+    res.className = 'result';
+    res.style.display = 'block';
+    res.innerHTML = `✅ <b>Recuperación completa.</b><br>
+      ${totalMigrated} registros migrados a la versión nueva.<br><br>
+      Ahora podés cerrar esta página y <b>abrir la app normalmente</b> en area-6.vercel.app.<br>
+      Tus tareas, equipos y todos los datos estarán disponibles.`;
+    btn.textContent = '✅ Recuperación exitosa — Ir a la app';
+    btn.disabled = false;
+    btn.onclick = ()=>{ window.location.href='https://area-6.vercel.app' };
+
+  }catch(e){
+    const res = document.getElementById('result');
+    res.className = 'result err';
+    res.style.display = 'block';
+    res.innerHTML = `⚠️ Error durante la recuperación: ${e.message}<br><br>Asegurate de abrir esta página en el <b>mismo navegador y dispositivo</b> donde usabas la app antes.`;
+    btn.disabled = false;
+    btn.textContent = '🔄 Reintentar';
+  }
+}
+
+analyze();
+</script>
+</body>
+</html>
