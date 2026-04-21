@@ -1883,26 +1883,50 @@ async function showGlobalTareas(){
       const rows=byServ[srvKey];
       if(!rows||!rows.length)return;
       const srvInfo=SRVS.find(s=>mSrv(s.id,srvKey));
-      html+=`<div class="stitle">${srvInfo?srvInfo.ico+' ':''} ${es(srvKey)} (${rows.length})</div>`;
-      html+=`<div class="tw" style="margin-bottom:.6rem"><table>
-        <thead><tr><th>Tipo</th><th>Descripción</th><th>SKINET</th><th>Sub-Serv.</th><th>Fecha</th></tr></thead>
-        <tbody>${rows.map(t=>{
-          const tipo=t.tipo||'Tarea General';
-          const esCerrada=t.estado==='Cerrada'||t.estado==='Archivada';
-          const esArch=t.estado==='Archivada';
-          const esRicGlob=tipo==='RIC01';
-          const tipoPill=esArch?`<span class="pill pdim">🗃 Archivada</span>`:esCerrada?`<span class="pill pdim">🔒 Cerrada</span>`:tipo==='RIC01'?`<span class="pill pok">RIC01</span>`:tipo==='Compra'?`<span class="pill ppu">Compra</span>`:`<span class="pill pin">Tarea</span>`;
-          return`<tr>
-            <td>${tipoPill}</td>
-            <td style="font-size:.72rem;max-width:160px;${esCerrada?'opacity:.6':''}"><span style="${esCerrada?'text-decoration:line-through':''}">${es(t.descripcion)}</span>${t.detalle?`<br><span style="color:var(--dim);font-size:.62rem">${es(t.detalle)}</span>`:''}</td>
-            <td>${esCerrada?'<span class="pill pdim">—</span>':t.skinet?'<span class="pill pok">✓</span>':'<span class="pill pwn">⚠</span>'}</td>
-            <td style="font-size:.63rem">${es(t.subServicio||'—')}</td>
-            <td style="font-size:.62rem">${t.fecha||'—'}</td>
-          </tr>`;
-        }).join('')}</tbody></table></div>`;
+      const abSrv=rows.filter(t=>t.estado!=='Archivada');
+      const archSrv=rows.filter(t=>t.estado==='Archivada');
+      html+=`<div class="stitle" style="margin-top:.3rem">${srvInfo?srvInfo.ico+' ':''} ${es(srvKey)} (${abSrv.length})</div>`;
+      abSrv.forEach(t=>{
+        const tipo=t.tipo||'Tarea General';
+        const cerrada=t.estado==='Cerrada';
+        const esRic=tipo==='RIC01';
+        const skiPill=t.skinet?'<span class="pill pok">\u2713 SKINET</span>':'<span class="pill pwn">\u26a0 SKINET pend.</span>';
+        const tcls=cerrada?'co':esRic?'cr':'cg';
+        const tipoPill=cerrada
+          ?`<span class="pill pdim">\ud83d\udd12 Cerrada</span>`
+          :esRic?`<span class="pill pok">\u2705 RIC01</span>`
+          :`<span class="pill pin">\ud83d\udcdd Tarea</span>`;
+        const puedeArchivar=cerrada&&(!esRic||t.skinet);
+        const subLbl=t.subServicio?`<span style="font-size:.62rem;color:var(--dim)"> \u00b7 ${es(t.subServicio)}</span>`:'';
+        const botonesAct=!cerrada
+          ?`<button class="ab cvt" onclick="cerrarTareaG(${t.id})" title="Marcar trabajo hecho">\u2714</button>`
+          :(esRic&&!t.skinet)
+            ?`<button class="ab" style="background:var(--nali);color:var(--na);border-color:var(--naba)" onclick="marcarSkinetG(${t.id})" title="Registrado en SKINET">\ud83d\udcf1</button>
+              <button class="ab" onclick="reabrirTareaG(${t.id})" title="Reabrir">\u21a9</button>`
+            :`<button class="ab" style="background:var(--veli);color:var(--ve2);border-color:var(--veba)" onclick="archivarTareaG(${t.id})" title="Archivar">\ud83d\uddc3</button>
+              <button class="ab" onclick="reabrirTareaG(${t.id})" title="Reabrir">\u21a9</button>`;
+        html+=`<div class="tcard ${tcls}" style="${cerrada?'opacity:.75;margin-bottom:.32rem':'margin-bottom:.32rem'}">
+          <div class="tcBody">
+            <div style="display:flex;gap:.28rem;flex-wrap:wrap;margin-bottom:.22rem">
+              ${tipoPill}${esRic?skiPill:''}
+            </div>
+            <p style="${cerrada?'text-decoration:line-through;color:var(--dim)':''}">${es(t.descripcion)}${subLbl}</p>
+            ${t.detalle?`<p style="color:var(--dim);font-size:.67rem;margin-top:.15rem">${es(t.detalle)}</p>`:''}
+            <div class="tmeta">${t.fecha||'\u2014'} \u00b7 ${es(t.usuario)}${cerrada&&t.fechaCierre?' \u00b7 Cerrada: '+t.fechaCierre:''}</div>
+          </div>
+          <div class="tcAct">
+            ${botonesAct}
+            <button class="ab" onclick="editR('tarea',${t.id})">\u270f\ufe0f</button>
+            ${puedeArchivar||!cerrada?`<button class="ab" onclick="delR('tarea',${t.id})">\ud83d\uddd1</button>`:''}
+          </div>
+        </div>`;
+      });
+      if(archSrv.length){
+        html+=`<div style="font-size:.65rem;color:var(--dim);margin-bottom:.5rem;padding-left:.3rem">\ud83d\uddc3 ${archSrv.length} archivada${archSrv.length>1?'s':''}: ${archSrv.map(t=>`<button class="ab" style="font-size:.6rem;margin-left:.2rem" onclick="reabrirTareaG(${t.id})" title="Reabrir">\u21a9 ${es(t.descripcion).substring(0,18)}</button>`).join('')}</div>`;
+      }
     });
 
-    if(!tareas.length&&!tareasGen.length&&!comprasGen.length) html=`<div class="emp"><div class="ei">✅</div>Sin tareas registradas.<br>Usá los botones de arriba para agregar.</div>`;
+    if(!tareas.length&&!tgAbiertas.length&&!comprasGen.length) html=`<div class="emp"><div class="ei">\u2705</div>Sin tareas registradas.<br>Us\u00e1 los botones de arriba para agregar.</div>`;
     el.innerHTML=html;
   }catch(e){el.innerHTML=`<div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div>`}
 }
