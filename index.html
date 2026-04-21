@@ -757,39 +757,98 @@ async function openMod(type){
 async function modTa(tc){
   const all=await getAll('tareas');
   const rows=all.filter(e=>mSrv(e.servicio,curSrv)&&matchSub(e));
-  const cnt={all:rows.length,ta:rows.filter(r=>!r.tipo||r.tipo==='Tarea General'||r.tipo==='Otro').length,ri:rows.filter(r=>r.tipo==='RIC01').length};
-  const shown={all:rows,ta:rows.filter(r=>!r.tipo||r.tipo==='Tarea General'||r.tipo==='Otro'),ri:rows.filter(r=>r.tipo==='RIC01')}[curTaFil]||rows;
+  const abiertas=rows.filter(r=>r.estado!=='Cerrada'&&r.estado!=='Archivada');
+  // Cerradas: separar las que tienen SKINET pendiente de las listas para archivar
+  const cerradas=rows.filter(r=>r.estado==='Cerrada');
+  // Archivadas: historial completo (no se muestran en filtros normales)
+  const cerPendSk=cerradas.filter(r=>r.tipo==='RIC01'&&!r.skinet);
+  const cnt={all:abiertas.length,ta:abiertas.filter(r=>!r.tipo||r.tipo==='Tarea General'||r.tipo==='Otro').length,ri:abiertas.filter(r=>r.tipo==='RIC01').length,ce:cerradas.length};
+  const base={all:abiertas,ta:abiertas.filter(r=>!r.tipo||r.tipo==='Tarea General'||r.tipo==='Otro'),ri:abiertas.filter(r=>r.tipo==='RIC01'),ce:cerradas};
+  const shown=base[curTaFil]||abiertas;
   tc.innerHTML=`
     <div class="tbar">
       <button class="btn baz2" onclick="openForm('tarea')">+ Tarea</button>
     </div>
     <div class="tfilter">
-      <button class="tfb ${curTaFil==='all'?'on t-all':''}" onclick="setTF('all',this)">Todas (${cnt.all})</button>
+      <button class="tfb ${curTaFil==='all'?'on t-all':''}" onclick="setTF('all',this)">Abiertas (${cnt.all})</button>
       <button class="tfb ${curTaFil==='ta'?'on t-ta':''}" onclick="setTF('ta',this)">📝 Tareas (${cnt.ta})</button>
       <button class="tfb ${curTaFil==='ri'?'on t-ri':''}" onclick="setTF('ri',this)">✅ RIC01 (${cnt.ri})</button>
+      <button class="tfb ${curTaFil==='ce'?'on t-co':''}" onclick="setTF('ce',this)">🔒 Cerradas (${cnt.ce}${cerPendSk.length?' · ⚠'+cerPendSk.length:''})</button>
     </div>
-    ${!shown.length?`<div class="emp"><div class="ei">✅</div>Sin tareas registradas.</div>`
+    ${cerPendSk.length&&curTaFil==='ce'?`<div class="warnbx" style="margin-bottom:.5rem">⚠️ <b>${cerPendSk.length} tarea${cerPendSk.length>1?'s':''} RIC01</b> cerrada${cerPendSk.length>1?'s':''} con SKINET pendiente. Registrá en SKINET y luego marcá ✓ para poder archivar.</div>`:''}
+    ${!shown.length?`<div class="emp"><div class="ei">✅</div>${curTaFil==='ce'?'Sin tareas cerradas.':'Sin tareas abiertas.'}</div>`
     :shown.map(t=>{
       const tipo=t.tipo||'Tarea General';
-      const tcls=tipo==='RIC01'?'cr':tipo==='Tarea General'?'cg':'co';
-      const tipoPill=tipo==='RIC01'?`<span class="pill pok">✅ RIC01</span>`:`<span class="pill pin">📝 Tarea</span>`;
-      const skiPill=t.skinet?'<span class="pill pok">✓ SKINET</span>':'<span class="pill pwn">⚠ Pendiente</span>';
-      return`<div class="tcard ${tcls}">
+      const cerrada=t.estado==='Cerrada';
+      const esRic=tipo==='RIC01';
+      // SKINET siempre visible en RIC01, tanto abierta como cerrada
+      const skiPill=t.skinet?'<span class="pill pok">✓ SKINET</span>':'<span class="pill pwn">⚠ SKINET pend.</span>';
+      const tcls=cerrada?'co':esRic?'cr':tipo==='Tarea General'?'cg':'co';
+      const tipoPill=cerrada
+        ?`<span class="pill pdim">🔒 Cerrada</span>`
+        :esRic?`<span class="pill pok">✅ RIC01</span>`
+        :`<span class="pill pin">📝 Tarea</span>`;
+      // Botones según estado
+      // Abierta: botón ✔ cerrar
+      // Cerrada RIC01 sin SKINET: botón 📱 marcar SKINET, botón ↩ reabrir — NO puede archivar
+      // Cerrada con SKINET ok (o no RIC01): botón 🗃 archivar + ↩ reabrir
+      const puedeArchivar=cerrada&&(!esRic||t.skinet);
+      const botonesAct=!cerrada
+        ?`<button class="ab cvt" onclick="cerrarTarea(${t.id})" title="Marcar trabajo hecho">✔</button>`
+        :(esRic&&!t.skinet)
+          ?`<button class="ab" style="background:var(--nali);color:var(--na);border-color:var(--naba)" onclick="marcarSkinet(${t.id})" title="Marcar como registrado en SKINET">📱</button>
+            <button class="ab" onclick="reabrirTarea(${t.id})" title="Reabrir">↩</button>`
+          :`<button class="ab" style="background:var(--veli);color:var(--ve2);border-color:var(--veba)" onclick="archivarTarea(${t.id})" title="Archivar (todo listo)">🗃</button>
+            <button class="ab" onclick="reabrirTarea(${t.id})" title="Reabrir">↩</button>`;
+      return`<div class="tcard ${tcls}" style="${cerrada?'opacity:.75;':''}">
         <div class="tcBody">
-          <div style="display:flex;gap:.28rem;flex-wrap:wrap;margin-bottom:.28rem">${tipoPill}${tipo==='RIC01'?skiPill:''}</div>
-          <p>${es(t.descripcion)}</p>
+          <div style="display:flex;gap:.28rem;flex-wrap:wrap;margin-bottom:.28rem">
+            ${tipoPill}${esRic?skiPill:''}
+          </div>
+          <p style="${cerrada?'text-decoration:line-through;color:var(--dim)':''}">${es(t.descripcion)}</p>
           ${t.detalle?`<p style="color:var(--dim);font-size:.67rem;margin-top:.2rem">${es(t.detalle)}</p>`:''}
-          <div class="tmeta">${t.fecha||'—'} · ${es(t.usuario)}</div>
+          <div class="tmeta">${t.fecha||'—'} · ${es(t.usuario)}${cerrada&&t.fechaCierre?' · Cerrada: '+t.fechaCierre:''}</div>
         </div>
         <div class="tcAct">
+          ${botonesAct}
           <button class="ab" onclick="editR('tarea',${t.id})">✏️</button>
-          <button class="ab" onclick="delR('tarea',${t.id})">🗑</button>
+          ${puedeArchivar||!cerrada?`<button class="ab" onclick="delR('tarea',${t.id})">🗑</button>`:''}
         </div>
       </div>`;
     }).join('')}
-    <div class="infobx">ℹ️ Tareas tipo <b>RIC01</b> deben registrarse también en <b>SKINET</b>.</div>`;
+    <div class="infobx">ℹ️ Tareas <b>RIC01</b>: cerrá al terminar el trabajo → registrá en SKINET → archivá.</div>`;
 }
-function setTF(f,el){curTaFil=f;document.querySelectorAll('.tfb').forEach(b=>b.className='tfb');el.className=`tfb on t-${f}`;openMod('tareas')}
+function setTF(f,el){curTaFil=f;document.querySelectorAll('.tfb').forEach(b=>b.className='tfb');el.className='tfb on t-'+(f==='ce'?'co':f);openMod('tareas')}
+
+async function cerrarTarea(id){
+  const hoy=new Date().toLocaleDateString('es-AR');
+  const all=await getAll('tareas');
+  const t=all.find(r=>r.id===id);if(!t)return;
+  await put('tareas',{...t,estado:'Cerrada',fechaCierre:hoy});
+  toast('Tarea cerrada ✔','ok');await refreshView();
+}
+async function marcarSkinet(id){
+  const hoy=new Date().toLocaleDateString('es-AR');
+  const all=await getAll('tareas');
+  const t=all.find(r=>r.id===id);if(!t)return;
+  await put('tareas',{...t,skinet:true,fechaSkinet:hoy});
+  toast('SKINET registrado ✔','ok');await refreshView();
+}
+async function archivarTarea(id){
+  cfm2('¿Archivar esta tarea?\nQuedará en el historial pero no en las listas activas.',async()=>{
+    const all=await getAll('tareas');
+    const t=all.find(r=>r.id===id);if(!t)return;
+    await put('tareas',{...t,estado:'Archivada'});
+    toast('Tarea archivada','ok');await refreshView();
+  });
+}
+async function reabrirTarea(id){
+  const all=await getAll('tareas');
+  const t=all.find(r=>r.id===id);if(!t)return;
+  const updated={...t};delete updated.estado;delete updated.fechaCierre;
+  await put('tareas',updated);
+  toast('Tarea reabierta','ok');await refreshView();
+}
 
 // ── EQUIPOS ──
 async function modEq(tc){
@@ -1718,12 +1777,13 @@ async function showGlobalTareas(){
           <thead><tr><th>Tipo</th><th>Descripción</th><th>SKINET</th><th>Fecha</th><th></th></tr></thead>
           <tbody>${tareasGen.map(t=>{
             const tipo=t.tipo||'Tarea General';
-            const tipoPill=tipo==='RIC01'?`<span class="pill pok">RIC01</span>`:`<span class="pill pin">Tarea</span>`;
+            const esCerrada=t.estado==='Cerrada';
+            const tipoPill=esCerrada?`<span class="pill pdim">🔒 Cerrada</span>`:tipo==='RIC01'?`<span class="pill pok">RIC01</span>`:`<span class="pill pin">Tarea</span>`;
             return`<tr>
               <td>${tipoPill}</td>
               <td style="font-size:.72rem;max-width:150px">${es(t.descripcion)}${t.detalle?`<br><span style="color:var(--dim);font-size:.62rem">${es(t.detalle)}</span>`:''}</td>
-              <td>${t.skinet?'<span class="pill pok">✓</span>':'<span class="pill pwn">⚠</span>'}</td>
-              <td style="font-size:.62rem">${t.fecha||'—'}</td>
+              <td>${esRicGlob?(t.skinet?'<span class="pill pok">✓</span>':'<span class="pill pwn">⚠</span>'):'—'}</td>
+              <td style="font-size:.62rem">${t.fecha||'—'}${esCerrada&&t.fechaCierre?'<br><span style="color:var(--dim);font-size:.6rem">Cerrada: '+t.fechaCierre+'</span>':''}</td>
               <td><div class="arow"><button class="ab" onclick="curSrv=null;curSubSrv=null;editR('tarea',${t.id})">✏️</button><button class="ab" onclick="delR('tarea',${t.id})">🗑</button></div></td>
             </tr>`;
           }).join('')}</tbody></table></div>`;
@@ -1756,12 +1816,14 @@ async function showGlobalTareas(){
         <thead><tr><th>Tipo</th><th>Descripción</th><th>SKINET</th><th>Sub-Serv.</th><th>Fecha</th></tr></thead>
         <tbody>${rows.map(t=>{
           const tipo=t.tipo||'Tarea General';
-          const tipoPill=tipo==='RIC01'?`<span class="pill pok">RIC01</span>`:tipo==='Compra'?`<span class="pill ppu">Compra</span>`:`<span class="pill pin">Tarea</span>`;
+          const esCerrada=t.estado==='Cerrada'||t.estado==='Archivada';
+          const esArch=t.estado==='Archivada';
+          const esRicGlob=tipo==='RIC01';
+          const tipoPill=esArch?`<span class="pill pdim">🗃 Archivada</span>`:esCerrada?`<span class="pill pdim">🔒 Cerrada</span>`:tipo==='RIC01'?`<span class="pill pok">RIC01</span>`:tipo==='Compra'?`<span class="pill ppu">Compra</span>`:`<span class="pill pin">Tarea</span>`;
           return`<tr>
             <td>${tipoPill}</td>
-            <td style="font-size:.72rem;max-width:160px">${es(t.descripcion)}${t.detalle?`<br><span style="color:var(--dim);font-size:.62rem">${es(t.detalle)}</span>`:''}
-            </td>
-            <td>${t.skinet?'<span class="pill pok">✓</span>':'<span class="pill pwn">⚠</span>'}</td>
+            <td style="font-size:.72rem;max-width:160px;${esCerrada?'opacity:.6':''}"><span style="${esCerrada?'text-decoration:line-through':''}">${es(t.descripcion)}</span>${t.detalle?`<br><span style="color:var(--dim);font-size:.62rem">${es(t.detalle)}</span>`:''}</td>
+            <td>${esCerrada?'<span class="pill pdim">—</span>':t.skinet?'<span class="pill pok">✓</span>':'<span class="pill pwn">⚠</span>'}</td>
             <td style="font-size:.63rem">${es(t.subServicio||'—')}</td>
             <td style="font-size:.62rem">${t.fecha||'—'}</td>
           </tr>`;
