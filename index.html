@@ -335,6 +335,10 @@ td{padding:.4rem .52rem;vertical-align:middle}
     <div id="globalView" style="display:none">
       <button class="volver" onclick="goHome()">← Volver</button>
       <div class="sectit"><span>✅</span> Todas las Tareas · Registros globales</div>
+      <div class="tbar" style="margin-bottom:.55rem">
+        <button class="btn baz2" onclick="openGlobalForm('tarea')">✏️ Nueva Tarea</button>
+        <button class="btn" style="background:#f3e5ff;color:var(--pu);border:1.5px solid #d7b3f8" onclick="openGlobalForm('compra')">🛒 Nueva Compra</button>
+      </div>
       <div id="globalContent"></div>
     </div>
 
@@ -452,6 +456,7 @@ const TIPOS_EQ=['Hospital','Comodato'];
 const PEDIDOS_GEN='__GENERAL__';
 const DB_NM='A6v6';
 const STORES=['equipos','expedientes','ric58','ordenes','actas','tareas','compras','bajas','stock','meta'];
+let _afterSaveCallback=null;
 
 // ════════════════════════════════════
 // ESTADO
@@ -1511,10 +1516,11 @@ async function saveForm(){
     obj.id=(fmMode==='edit'&&fmId)?fmId:Date.now();
     await put(store,obj);
     closeForm();toast('Guardado ✓','ok');
-    await refreshView();
+    if(_afterSaveCallback){const cb=_afterSaveCallback;_afterSaveCallback=null;await cb();}
+    else await refreshView();
   }catch(e){toast('Error: '+e.message,'er')}
 }
-function closeForm(){g('fp').classList.remove('open');g('fpbody').innerHTML=''}
+function closeForm(){g('fp').classList.remove('open');g('fpbody').innerHTML='';_afterSaveCallback=null;}
 
 async function editR(type,id){
   const sm={equipo:'equipos',expediente:'expedientes',ric58:'ric58',orden:'ordenes',acta:'actas',tarea:'tareas',compra:'compras',baja:'bajas'};
@@ -1642,6 +1648,14 @@ function mSrv(a,b){return nSrv(a)===nSrv(b)}
 // ════════════════════════════════════
 // GLOBAL TAREAS VIEW
 // ════════════════════════════════════
+function openGlobalForm(type){
+  // Limpia servicio/subservicio para que el form no herede uno previo
+  curSrv=null;curSubSrv=null;
+  // Callback especial: al guardar, vuelve a la vista global
+  _afterSaveCallback=()=>showGlobalTareas();
+  openForm(type);
+}
+
 async function showGlobalTareas(){
   showView('globalView');
   curSrv=null;curSubSrv=null;curMod=null;
@@ -1694,10 +1708,48 @@ async function showGlobalTareas(){
         </tr>`).join('')}</tbody></table></div>`;
     }
 
-    // All tareas grouped by service
-    const srvKeys=Object.keys(byServ).sort();
+    // ── Tareas y Compras GENERALES (sin servicio asignado) ──
+    const tareasGen=tareas.filter(t=>!t.servicio||t.servicio==='General'||t.servicio===''||t.servicio==='Sin servicio');
+    const comprasGen=compras.filter(c=>!c.servicio||c.servicio==='General'||c.servicio===''||c.servicio==='Sin servicio');
+    if(tareasGen.length||comprasGen.length){
+      html+=`<div class="stitle" style="color:var(--az);border-bottom:2px solid var(--az3);padding-bottom:.25rem;margin-bottom:.35rem">🏥 GENERALES · Sin servicio asignado</div>`;
+      if(tareasGen.length){
+        html+=`<div class="tw" style="margin-bottom:.5rem"><table>
+          <thead><tr><th>Tipo</th><th>Descripción</th><th>SKINET</th><th>Fecha</th><th></th></tr></thead>
+          <tbody>${tareasGen.map(t=>{
+            const tipo=t.tipo||'Tarea General';
+            const tipoPill=tipo==='RIC01'?`<span class="pill pok">RIC01</span>`:`<span class="pill pin">Tarea</span>`;
+            return`<tr>
+              <td>${tipoPill}</td>
+              <td style="font-size:.72rem;max-width:150px">${es(t.descripcion)}${t.detalle?`<br><span style="color:var(--dim);font-size:.62rem">${es(t.detalle)}</span>`:''}</td>
+              <td>${t.skinet?'<span class="pill pok">✓</span>':'<span class="pill pwn">⚠</span>'}</td>
+              <td style="font-size:.62rem">${t.fecha||'—'}</td>
+              <td><div class="arow"><button class="ab" onclick="curSrv=null;curSubSrv=null;editR('tarea',${t.id})">✏️</button><button class="ab" onclick="delR('tarea',${t.id})">🗑</button></div></td>
+            </tr>`;
+          }).join('')}</tbody></table></div>`;
+      }
+      if(comprasGen.length){
+        html+=`<div class="tw" style="margin-bottom:.7rem"><table>
+          <thead><tr><th>Tipo</th><th>Descripción</th><th>Estado OC</th><th>Fecha</th><th></th></tr></thead>
+          <tbody>${comprasGen.map(c=>{
+            const pill=c.tipo==='Orden de Provisión (OC)'?`<span class="pill ppu">OC</span>`:`<span class="pill pgold">Compra</span>`;
+            const ocSt=c.estadoOC?`<span class="pill ${c.estadoOC==='Sin Oferentes'?'pal':'pdim'}">${es(c.estadoOC)}</span>`:'—';
+            return`<tr>
+              <td>${pill}</td>
+              <td style="font-size:.72rem;max-width:150px">${es(c.descripcion)}${c.observaciones?`<br><span style="color:var(--dim);font-size:.62rem">${es(c.observaciones)}</span>`:''}</td>
+              <td>${ocSt}</td>
+              <td style="font-size:.62rem">${c.fecha||'—'}</td>
+              <td><div class="arow"><button class="ab" onclick="curSrv=null;curSubSrv=null;editR('compra',${c.id})">✏️</button><button class="ab" onclick="delR('compra',${c.id})">🗑</button></div></td>
+            </tr>`;
+          }).join('')}</tbody></table></div>`;
+      }
+    }
+
+    // ── Tareas agrupadas por servicio ──
+    const srvKeys=Object.keys(byServ).filter(k=>k&&k!=='General'&&k!=='Sin servicio').sort();
     srvKeys.forEach(srvKey=>{
       const rows=byServ[srvKey];
+      if(!rows||!rows.length)return;
       const srvInfo=SRVS.find(s=>mSrv(s.id,srvKey));
       html+=`<div class="stitle">${srvInfo?srvInfo.ico+' ':''} ${es(srvKey)} (${rows.length})</div>`;
       html+=`<div class="tw" style="margin-bottom:.6rem"><table>
@@ -1716,7 +1768,7 @@ async function showGlobalTareas(){
         }).join('')}</tbody></table></div>`;
     });
 
-    if(!tareas.length) html=`<div class="emp"><div class="ei">✅</div>Sin tareas registradas.<br>Ingresá a cada servicio para agregar tareas.</div>`;
+    if(!tareas.length&&!tareasGen.length&&!comprasGen.length) html=`<div class="emp"><div class="ei">✅</div>Sin tareas registradas.<br>Usá los botones de arriba para agregar.</div>`;
     el.innerHTML=html;
   }catch(e){el.innerHTML=`<div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div>`}
 }
