@@ -1707,6 +1707,37 @@ function mSrv(a,b){return nSrv(a)===nSrv(b)}
 // ════════════════════════════════════
 // GLOBAL TAREAS VIEW
 // ════════════════════════════════════
+// ── Variantes G: misma lógica que modTa pero recargan la vista global ──
+async function cerrarTareaG(id){
+  const hoy=new Date().toLocaleDateString('es-AR');
+  const all=await getAll('tareas');
+  const t=all.find(r=>r.id===id);if(!t)return;
+  await put('tareas',{...t,estado:'Cerrada',fechaCierre:hoy});
+  toast('Tarea cerrada ✔','ok');await showGlobalTareas();
+}
+async function marcarSkinetG(id){
+  const hoy=new Date().toLocaleDateString('es-AR');
+  const all=await getAll('tareas');
+  const t=all.find(r=>r.id===id);if(!t)return;
+  await put('tareas',{...t,skinet:true,fechaSkinet:hoy});
+  toast('SKINET registrado ✔','ok');await showGlobalTareas();
+}
+async function archivarTareaG(id){
+  cfm2('¿Archivar esta tarea?\nQuedará en el historial de archivadas.',async()=>{
+    const all=await getAll('tareas');
+    const t=all.find(r=>r.id===id);if(!t)return;
+    await put('tareas',{...t,estado:'Archivada'});
+    toast('Tarea archivada','ok');await showGlobalTareas();
+  });
+}
+async function reabrirTareaG(id){
+  const all=await getAll('tareas');
+  const t=all.find(r=>r.id===id);if(!t)return;
+  const updated={...t};delete updated.estado;delete updated.fechaCierre;
+  await put('tareas',updated);
+  toast('Tarea reabierta','ok');await showGlobalTareas();
+}
+
 function openGlobalForm(type){
   // Limpia servicio/subservicio para que el form no herede uno previo
   curSrv=null;curSubSrv=null;
@@ -1770,25 +1801,54 @@ async function showGlobalTareas(){
     // ── Tareas y Compras GENERALES (sin servicio asignado) ──
     const tareasGen=tareas.filter(t=>!t.servicio||t.servicio==='General'||t.servicio===''||t.servicio==='Sin servicio');
     const comprasGen=compras.filter(c=>!c.servicio||c.servicio==='General'||c.servicio===''||c.servicio==='Sin servicio');
-    if(tareasGen.length||comprasGen.length){
-      html+=`<div class="stitle" style="color:var(--az);border-bottom:2px solid var(--az3);padding-bottom:.25rem;margin-bottom:.35rem">🏥 GENERALES · Sin servicio asignado</div>`;
-      if(tareasGen.length){
-        html+=`<div class="tw" style="margin-bottom:.5rem"><table>
-          <thead><tr><th>Tipo</th><th>Descripción</th><th>SKINET</th><th>Fecha</th><th></th></tr></thead>
-          <tbody>${tareasGen.map(t=>{
-            const tipo=t.tipo||'Tarea General';
-            const esCerrada=t.estado==='Cerrada';
-            const tipoPill=esCerrada?`<span class="pill pdim">🔒 Cerrada</span>`:tipo==='RIC01'?`<span class="pill pok">RIC01</span>`:`<span class="pill pin">Tarea</span>`;
-            return`<tr>
-              <td>${tipoPill}</td>
-              <td style="font-size:.72rem;max-width:150px">${es(t.descripcion)}${t.detalle?`<br><span style="color:var(--dim);font-size:.62rem">${es(t.detalle)}</span>`:''}</td>
-              <td>${esRicGlob?(t.skinet?'<span class="pill pok">✓</span>':'<span class="pill pwn">⚠</span>'):'—'}</td>
-              <td style="font-size:.62rem">${t.fecha||'—'}${esCerrada&&t.fechaCierre?'<br><span style="color:var(--dim);font-size:.6rem">Cerrada: '+t.fechaCierre+'</span>':''}</td>
-              <td><div class="arow"><button class="ab" onclick="curSrv=null;curSubSrv=null;editR('tarea',${t.id})">✏️</button><button class="ab" onclick="delR('tarea',${t.id})">🗑</button></div></td>
-            </tr>`;
-          }).join('')}</tbody></table></div>`;
+    const tgAbiertas=tareasGen.filter(t=>t.estado!=='Cerrada'&&t.estado!=='Archivada');
+    const tgCerradas=tareasGen.filter(t=>t.estado==='Cerrada');
+    const tgArchivadas=tareasGen.filter(t=>t.estado==='Archivada');
+    const tgPendSk=tgCerradas.filter(t=>t.tipo==='RIC01'&&!t.skinet);
+    if(tgAbiertas.length||tgCerradas.length||tgArchivadas.length||comprasGen.length){
+      html+=`<div class="stitle" style="color:var(--az);border-bottom:2px solid var(--az3);padding-bottom:.25rem;margin-bottom:.45rem">🏥 GENERALES · Sin servicio asignado</div>`;
+      if(tgPendSk.length){
+        html+=`<div class="warnbx" style="margin-bottom:.5rem">⚠️ <b>${tgPendSk.length} tarea${tgPendSk.length>1?'s':''} RIC01</b> cerrada${tgPendSk.length>1?'s':''} con SKINET pendiente.</div>`;
       }
+      // Tarjetas con lógica completa: abierta → cerrar · cerrada+ric01 sin skinet → 📱 · cerrada+ok → archivar
+      const tgMostrar=[...tgAbiertas,...tgCerradas];
+      tgMostrar.forEach(t=>{
+        const tipo=t.tipo||'Tarea General';
+        const cerrada=t.estado==='Cerrada';
+        const esRic=tipo==='RIC01';
+        const skiPill=t.skinet?'<span class="pill pok">✓ SKINET</span>':'<span class="pill pwn">⚠ SKINET pend.</span>';
+        const tcls=cerrada?'co':esRic?'cr':'cg';
+        const tipoPill=cerrada
+          ?`<span class="pill pdim">🔒 Cerrada</span>`
+          :esRic?`<span class="pill pok">✅ RIC01</span>`
+          :`<span class="pill pin">📝 Tarea</span>`;
+        const puedeArchivar=cerrada&&(!esRic||t.skinet);
+        const botonesAct=!cerrada
+          ?`<button class="ab cvt" onclick="cerrarTareaG(${t.id})" title="Marcar trabajo hecho">✔</button>`
+          :(esRic&&!t.skinet)
+            ?`<button class="ab" style="background:var(--nali);color:var(--na);border-color:var(--naba)" onclick="marcarSkinetG(${t.id})" title="Registrado en SKINET">📱</button>
+              <button class="ab" onclick="reabrirTareaG(${t.id})" title="Reabrir">↩</button>`
+            :`<button class="ab" style="background:var(--veli);color:var(--ve2);border-color:var(--veba)" onclick="archivarTareaG(${t.id})" title="Archivar">🗃</button>
+              <button class="ab" onclick="reabrirTareaG(${t.id})" title="Reabrir">↩</button>`;
+        html+=`<div class="tcard ${tcls}" style="${cerrada?'opacity:.75;margin-bottom:.38rem':'margin-bottom:.38rem'}">
+          <div class="tcBody">
+            <div style="display:flex;gap:.28rem;flex-wrap:wrap;margin-bottom:.28rem">
+              ${tipoPill}${esRic?skiPill:''}
+            </div>
+            <p style="${cerrada?'text-decoration:line-through;color:var(--dim)':''}">${es(t.descripcion)}</p>
+            ${t.detalle?`<p style="color:var(--dim);font-size:.67rem;margin-top:.2rem">${es(t.detalle)}</p>`:''}
+            <div class="tmeta">${t.fecha||'—'} · ${es(t.usuario)}${cerrada&&t.fechaCierre?' · Cerrada: '+t.fechaCierre:''}</div>
+          </div>
+          <div class="tcAct">
+            ${botonesAct}
+            <button class="ab" onclick="curSrv=null;curSubSrv=null;editR('tarea',${t.id})">✏️</button>
+            ${puedeArchivar||!cerrada?`<button class="ab" onclick="delR('tarea',${t.id})">🗑</button>`:''}
+          </div>
+        </div>`;
+      });
+      // Compras generales
       if(comprasGen.length){
+        html+=`<div class="stitle" style="margin-top:.5rem">🛒 Compras generales (${comprasGen.length})</div>`;
         html+=`<div class="tw" style="margin-bottom:.7rem"><table>
           <thead><tr><th>Tipo</th><th>Descripción</th><th>Estado OC</th><th>Fecha</th><th></th></tr></thead>
           <tbody>${comprasGen.map(c=>{
@@ -1802,6 +1862,18 @@ async function showGlobalTareas(){
               <td><div class="arow"><button class="ab" onclick="curSrv=null;curSubSrv=null;editR('compra',${c.id})">✏️</button><button class="ab" onclick="delR('compra',${c.id})">🗑</button></div></td>
             </tr>`;
           }).join('')}</tbody></table></div>`;
+      }
+      // Archivadas: historial colapsado
+      if(tgArchivadas.length){
+        html+=`<div class="stitle" style="color:var(--dim);margin-top:.3rem">🗃 Archivadas (${tgArchivadas.length})</div>`;
+        html+=`<div class="tw" style="margin-bottom:.7rem;opacity:.6"><table>
+          <thead><tr><th>Descripción</th><th>Tipo</th><th>Fecha cierre</th><th></th></tr></thead>
+          <tbody>${tgArchivadas.map(t=>`<tr>
+            <td style="font-size:.72rem;text-decoration:line-through;color:var(--dim)">${es(t.descripcion)}</td>
+            <td><span class="pill pdim">${t.tipo||'Tarea'}</span></td>
+            <td style="font-size:.62rem">${t.fechaCierre||t.fecha||'—'}</td>
+            <td><button class="ab" onclick="reabrirTareaG(${t.id})" title="Reabrir">↩</button></td>
+          </tr>`).join('')}</tbody></table></div>`;
       }
     }
 
