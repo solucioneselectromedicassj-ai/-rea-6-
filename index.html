@@ -317,6 +317,18 @@ td{padding:.4rem .52rem;vertical-align:middle}
         <div class="mcard mo" onclick="openMod('ordenes')"><div class="mtop"></div><div class="mico">🔧</div><h4>Órdenes Trabajo</h4><div class="mcnt" id="mc-ordenes">—</div></div>
         <div class="mcard mb" onclick="openMod('bajas')"><div class="mtop"></div><div class="mico">🗑️</div><h4>Bajas RIC-44</h4><div class="mcnt" id="mc-bajas">—</div></div>
       </div>
+      <!-- Barra fija de filtros para equipos, visible solo cuando curMod=equipos -->
+      <div id="eqFilterBar" style="display:none;background:var(--bg);padding:.4rem 0;position:sticky;top:0;z-index:20;border-bottom:2px solid var(--az3);margin-bottom:.4rem;box-shadow:0 2px 6px rgba(0,0,0,.07)">
+        <div style="display:flex;gap:.3rem;flex-wrap:wrap;padding:0 .1rem">
+          <select id="eqFamSel" class="fi" style="flex:1;min-width:110px;font-size:.74rem" onchange="filtrarFamiliaEq(this.value)">
+            <option value="">📂 Todas las familias</option>
+          </select>
+          <input id="eqBuscador" class="fi" style="flex:2;min-width:120px;font-size:.74rem" type="text" placeholder="🔍 Buscar equipo, serie, marca..." oninput="ft('eqT',this.value)">
+        </div>
+        <div id="eqFamLabel" style="display:none;font-size:.68rem;color:var(--az);font-weight:600;padding:.2rem .1rem 0">
+          📂 <span id="eqFamLabelTxt"></span> · <button class="ab" style="font-size:.6rem" onclick="filtrarFamiliaEq('')">✕ Ver todas</button>
+        </div>
+      </div>
       <div id="modContent"></div>
     </div>
 
@@ -738,6 +750,9 @@ async function openMod(type){
   document.querySelectorAll('.mcard').forEach(c=>c.classList.remove('active-mod'));
   const map={tareas:'mt',equipos:'me',expedientes:'mexp',ric58:'mr',compras:'mc',actas:'ma',ordenes:'mo',bajas:'mb'};
   document.querySelectorAll('.mcard.'+map[type]).forEach(c=>c.classList.add('active-mod'));
+  // Barra de filtros: solo visible en equipos
+  const fb=g('eqFilterBar');
+  if(fb)fb.style.display=type==='equipos'?'block':'none';
   const tc=g('modContent');
   tc.innerHTML=`<div style="color:var(--dim);font-size:.78rem;padding:.4rem">Cargando...</div>`;
   try{
@@ -851,16 +866,31 @@ async function reabrirTarea(id){
 }
 
 // ── EQUIPOS ──
+let _eqFamilia='';
 async function modEq(tc){
   const all=await getAll('equipos');
   let rows=all.filter(e=>mSrv(e.servicio,curSrv)&&matchSub(e));
   const hoy=today();
-  // Sort: vencidos primero → próximos → OK → sin fecha
   rows.sort((a,b)=>{
     const da=diff(hoy,toD(a.proximoMant)),db2=diff(hoy,toD(b.proximoMant));
     if(da===null&&db2===null)return 0;if(da===null)return 1;if(db2===null)return -1;return da-db2;
   });
   if(!rows.length){tc.innerHTML=`<div class="tbar"><button class="btn baz2" onclick="openForm('equipo')">+ Agregar equipo</button></div><div class="emp"><div class="ei">🩺</div>Sin equipos. Importá <b>equipos.xlsx</b>.</div>`;return}
+  // Familias: primera palabra del nombre
+  const familias=[...new Set(rows.map(e=>(es(e.descrip)||'').trim().split(/\s+/)[0]||'Otros'))].sort();
+  const shown=_eqFamilia?rows.filter(e=>(es(e.descrip)||'').trim().toUpperCase().startsWith(_eqFamilia.toUpperCase())):rows;
+  // Poblar la barra sticky externa
+  const famSel=g('eqFamSel');
+  if(famSel){
+    famSel.innerHTML=`<option value="">📂 Todas (${rows.length})</option>`
+      +familias.map(f=>`<option value="${f}" ${_eqFamilia===f?'selected':''}>${f} (${rows.filter(e=>(es(e.descrip)||'').trim().toUpperCase().startsWith(f.toUpperCase())).length})</option>`).join('');
+  }
+  const eqBusc=g('eqBuscador');
+  if(eqBusc)eqBusc.value='';
+  const famLbl=g('eqFamLabel');
+  const famLblTxt=g('eqFamLabelTxt');
+  if(famLbl){famLbl.style.display=_eqFamilia?'block':'none';}
+  if(famLblTxt)famLblTxt.textContent=_eqFamilia?`${_eqFamilia} · ${shown.length} equipos`:'';
   tc.innerHTML=`
     <div class="tbar">
       <button class="btn baz2" onclick="openForm('equipo')">+ Agregar</button>
@@ -868,10 +898,9 @@ async function modEq(tc){
       <span class="bx baz" style="font-size:.62rem">${rows.filter(e=>!e.tipoEq||e.tipoEq==='Hospital').length} hosp.</span>
       <span class="bx bpu" style="font-size:.62rem">${rows.filter(e=>e.tipoEq==='Comodato').length} comod.</span>
     </div>
-    <div class="tbar"><input class="fi" type="text" placeholder="Buscar equipo, serie, marca..." oninput="ft('eqT',this.value)"></div>
     <div class="tw"><table id="eqT">
       <thead><tr><th>Equipo / Marca · Serie</th><th>Tipo</th><th>Estado</th><th>Próx.Mant</th><th>Días</th><th>Garantía</th><th></th></tr></thead>
-      <tbody>${rows.map(e=>{
+      <tbody>${shown.map(e=>{
         const pd=toD(e.proximoMant),d=diff(hoy,pd);
         const tipoB=e.tipoEq==='Comodato'?`<span class="tipo-c">Comodato</span>`:`<span class="tipo-h">Hospital</span>`;
         const garBadge=garantiaBadge(e.fechaCompra,e.garantiaMeses);
@@ -888,10 +917,76 @@ async function modEq(tc){
           <td>${garBadge}</td>
           <td><div class="arow">
             <button class="ab" onclick="editR('equipo',${e.id})">✏️</button>
-            <button class="ab" onclick="delR('equipo',${e.id})">🗑</button>
+            <button class="ab" style="background:var(--roli);color:var(--ro);border-color:var(--roba);font-weight:700" onclick="iniciarBajaEquipo(${e.id})" title="Dar de baja · pasa a lista SKINET">↓ Baja</button>
           </div></td>
         </tr>`;
       }).join('')}</tbody></table></div>`;
+}
+function filtrarFamiliaEq(val){
+  _eqFamilia=val;
+  // Limpiar buscador al cambiar familia
+  const busc=g('eqBuscador');if(busc)busc.value='';
+  // Recargar sin perder posición en pantalla
+  openMod('equipos');
+}
+
+async function iniciarBajaEquipo(id){
+  const all=await getAll('equipos');
+  const eq=all.find(e=>e.id===id);
+  if(!eq)return;
+  // Usar el panel de formulario existente (fp) como mini-modal de baja
+  g('fptit').textContent='Dar de Baja · '+eq.descrip;
+  g('fpbody').innerHTML=`
+    <div style="background:var(--roli);border:1.5px solid var(--roba);border-radius:8px;padding:.6rem .8rem;margin-bottom:.7rem;font-size:.74rem;color:var(--ro)">
+      ⚠️ El equipo queda marcado como <b>De Baja</b> en la lista y se registra en Bajas RIC-44.<br>
+      <b>No se elimina de SKINET automáticamente</b> — vas a ver el pendiente en Bajas.
+    </div>
+    <div style="font-size:.78rem;font-weight:700;margin-bottom:.5rem">
+      🩺 ${es(eq.descrip)}<br>
+      <span style="font-weight:400;color:var(--dim);font-size:.7rem">${es(eq.marca||'')} · ${es(eq.serie||'')} · ${es(eq.servicio||'')}</span>
+    </div>
+    <div class="fg"><label>Motivo de baja</label>
+      <select id="_bajaMot">
+        <option>Obsoleto</option><option>Rotura Irreparable</option><option>Pérdida</option><option>Robo</option><option>Otro</option>
+      </select>
+    </div>
+    <div class="fg"><label>Observaciones (serie inventario, notas)</label>
+      <textarea id="_bajaObs" rows="2" placeholder="Ej: Inventario 12345, sin piezas de repuesto..."></textarea>
+    </div>`;
+  g('fpfoot').innerHTML=`
+    <button class="btn bgr" onclick="closeForm()">Cancelar</button>
+    <button class="btn" style="background:var(--ro);color:#fff" onclick="confirmarBajaEquipo(${eq.id})">🗑 Confirmar baja</button>`;
+  g('fp').classList.add('open');
+}
+
+async function confirmarBajaEquipo(id){
+  const all=await getAll('equipos');
+  const eq=all.find(e=>e.id===id);
+  if(!eq)return;
+  const hoy=new Date().toLocaleDateString('es-AR');
+  const motivo=document.getElementById('_bajaMot')?.value||'Obsoleto';
+  const obs=document.getElementById('_bajaObs')?.value||'';
+  // 1. Crear registro en bajas con skinetPendiente=true
+  await put('bajas',{
+    id:Date.now(),
+    equipo:eq.descrip,
+    marca:eq.marca||'',
+    serie:eq.serie||'',
+    servicio:eq.servicio||'',
+    subServicio:eq.subServicio||'',
+    tipoEq:eq.tipoEq||'Hospital',
+    motivo:motivo,
+    observaciones:obs,
+    fecha:hoy,
+    usuario:user?.n||'',
+    skinetPendiente:true,
+    equipoId:eq.id
+  });
+  // 2. Marcar equipo como "De Baja" — NO se elimina, queda en el registro
+  await put('equipos',{...eq,estado:'De Baja',mod:hoy});
+  closeForm();
+  toast('Baja registrada · Pendiente eliminar en SKINET','ok');
+  await refreshView();
 }
 
 function garantiaBadge(fechaCompra,meses=12){
@@ -1161,20 +1256,63 @@ async function modAc(tc){
 async function modBa(tc){
   const all=await getAll('bajas');
   const rows=all.filter(e=>mSrv(e.servicio,curSrv)&&matchSub(e));
+  // Separar: pendientes de eliminar en SKINET vs ya registradas
+  const pendSkinet=rows.filter(b=>b.skinetPendiente&&!b.skinetOk);
+  const yaRegistradas=rows.filter(b=>!b.skinetPendiente||b.skinetOk);
   tc.innerHTML=`
-    <div class="tbar"><button class="btn baz2" onclick="openForm('baja')">+ Dar de Baja</button><div class="sp"></div><span class="bx bro">${rows.length}</span></div>
-    ${!rows.length?`<div class="emp"><div class="ei">🗑️</div>Sin bajas.</div>`:`
-    <div class="tw"><table><thead><tr><th>Equipo</th><th>Motivo</th><th>Descripción</th><th>Fecha</th><th></th></tr></thead>
-    <tbody>${rows.map(b=>`<tr>
-      <td><b style="font-size:.71rem">${es(b.equipo)}</b></td>
-      <td><span class="pill pal">${es(b.motivo)}</span></td>
-      <td style="font-size:.66rem;max-width:130px">${es(b.descripcion)}</td>
-      <td style="font-size:.62rem">${b.fecha||'—'}</td>
-      <td><div class="arow">
-        <button class="ab" onclick="editR('baja',${b.id})">✏️</button>
-        <button class="ab" onclick="delR('baja',${b.id})">🗑</button>
-      </div></td>
-    </tr>`).join('')}</tbody></table></div>`}`;
+    <div class="tbar">
+      <button class="btn baz2" onclick="openForm('baja')">+ Dar de Baja</button>
+      <div class="sp"></div>
+      ${pendSkinet.length?`<span class="bx bro" style="font-size:.62rem">⚠ ${pendSkinet.length} pend. SKINET</span>`:''}
+      <span class="bx bdim" style="font-size:.62rem">${rows.length} total</span>
+    </div>
+    ${pendSkinet.length?`
+      <div class="alertbx" style="margin-bottom:.5rem">⚠️ <b>${pendSkinet.length} equipo${pendSkinet.length>1?'s':''}</b> dado${pendSkinet.length>1?'s':''} de baja pendiente${pendSkinet.length>1?'s':''} de eliminar en SKINET</div>
+      <div class="tw" style="margin-bottom:.7rem"><table>
+        <thead><tr><th>Equipo</th><th>Serie</th><th>Motivo</th><th>Fecha</th><th></th></tr></thead>
+        <tbody>${pendSkinet.map(b=>`<tr style="background:var(--roli)">
+          <td>
+            <b style="font-size:.72rem">${es(b.equipo)}</b>
+            ${b.marca?`<br><span style="font-size:.61rem;color:var(--dim)">${es(b.marca)}</span>`:''}
+            ${b.observaciones?`<br><span style="font-size:.6rem;color:var(--dim)">${es(b.observaciones)}</span>`:''}
+          </td>
+          <td style="font-size:.63rem">${es(b.serie)||'—'}</td>
+          <td><span class="pill pal">${es(b.motivo)}</span></td>
+          <td style="font-size:.62rem">${b.fecha||'—'}</td>
+          <td><div class="arow">
+            <button class="ab" style="background:var(--veli);color:var(--ve2);border-color:var(--veba);font-weight:700" onclick="marcarBajaSKINET(${b.id})" title="Confirmar que se eliminó en SKINET">📱 SKINET ✓</button>
+            <button class="ab" onclick="editR('baja',${b.id})">✏️</button>
+          </div></td>
+        </tr>`).join('')}</tbody>
+      </table></div>`:''}
+    ${yaRegistradas.length?`
+      <div class="stitle" style="color:var(--dim)">🗃 Historial de bajas (${yaRegistradas.length})</div>
+      <div class="tw"><table>
+        <thead><tr><th>Equipo</th><th>Motivo</th><th>SKINET</th><th>Fecha</th><th></th></tr></thead>
+        <tbody>${yaRegistradas.map(b=>`<tr>
+          <td>
+            <b style="font-size:.71rem">${es(b.equipo)}</b>
+            ${b.serie?`<br><span style="font-size:.6rem;color:var(--dim)">${es(b.serie)}</span>`:''}
+          </td>
+          <td><span class="pill pal">${es(b.motivo)}</span></td>
+          <td>${b.skinetOk?'<span class="pill pok">✓</span>':'<span class="pill pdim">—</span>'}</td>
+          <td style="font-size:.62rem">${b.fecha||'—'}</td>
+          <td><div class="arow">
+            <button class="ab" onclick="editR('baja',${b.id})">✏️</button>
+            <button class="ab" onclick="delR('baja',${b.id})">🗑</button>
+          </div></td>
+        </tr>`).join('')}</tbody>
+      </table></div>`:''}
+    ${!rows.length?`<div class="emp"><div class="ei">🗑️</div>Sin bajas registradas.</div>`:''}`;
+}
+
+async function marcarBajaSKINET(id){
+  const hoy=new Date().toLocaleDateString('es-AR');
+  const all=await getAll('bajas');
+  const b=all.find(r=>r.id===id);if(!b)return;
+  await put('bajas',{...b,skinetOk:true,skinetPendiente:false,fechaSkinet:hoy});
+  toast('Baja confirmada en SKINET ✔','ok');
+  await refreshView();
 }
 
 function ft(id,v){const tbl=document.getElementById(id);if(!tbl)return;const lv=v.toLowerCase();tbl.querySelectorAll('tbody tr').forEach(tr=>{tr.style.display=!v||tr.textContent.toLowerCase().includes(lv)?'':'none'})}
