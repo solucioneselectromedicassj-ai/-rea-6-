@@ -323,7 +323,7 @@ td{padding:.4rem .52rem;vertical-align:middle}
           <select id="eqFamSel" class="fi" style="flex:1;min-width:110px;font-size:.74rem" onchange="filtrarFamiliaEq(this.value)">
             <option value="">📂 Todas las familias</option>
           </select>
-          <input id="eqBuscador" class="fi" style="flex:2;min-width:120px;font-size:.74rem" type="text" placeholder="🔍 Buscar equipo, serie, marca..." oninput="ft('eqT',this.value)">
+          <input id="eqBuscador" class="fi" style="flex:2;min-width:120px;font-size:.74rem" type="text" placeholder="🔍 Buscar equipo, serie, marca..." oninput="filtrarEqCards(this.value)">
         </div>
         <div id="eqFamLabel" style="display:none;font-size:.68rem;color:var(--az);font-weight:600;padding:.2rem .1rem 0">
           📂 <span id="eqFamLabelTxt"></span> · <button class="ab" style="font-size:.6rem" onclick="filtrarFamiliaEq('')">✕ Ver todas</button>
@@ -891,43 +891,136 @@ async function modEq(tc){
   const famLblTxt=g('eqFamLabelTxt');
   if(famLbl){famLbl.style.display=_eqFamilia?'block':'none';}
   if(famLblTxt)famLblTxt.textContent=_eqFamilia?`${_eqFamilia} · ${shown.length} equipos`:'';
+  // Resumen rápido en tabla + cards tappables
   tc.innerHTML=`
     <div class="tbar">
       <button class="btn baz2" onclick="openForm('equipo')">+ Agregar</button>
       <div class="sp"></div>
       <span class="bx baz" style="font-size:.62rem">${rows.filter(e=>!e.tipoEq||e.tipoEq==='Hospital').length} hosp.</span>
       <span class="bx bpu" style="font-size:.62rem">${rows.filter(e=>e.tipoEq==='Comodato').length} comod.</span>
+      ${rows.filter(e=>e.estado==='De Baja').length?`<span class="bx bro" style="font-size:.62rem">⚠ ${rows.filter(e=>e.estado==='De Baja').length} de baja</span>`:''}
     </div>
-    <div class="tw"><table id="eqT">
-      <thead><tr><th>Equipo / Marca · Serie</th><th>Tipo</th><th>Estado</th><th>Próx.Mant</th><th>Días</th><th>Garantía</th><th></th></tr></thead>
-      <tbody>${shown.map(e=>{
-        const pd=toD(e.proximoMant),d=diff(hoy,pd);
-        const tipoB=e.tipoEq==='Comodato'?`<span class="tipo-c">Comodato</span>`:`<span class="tipo-h">Hospital</span>`;
-        const garBadge=garantiaBadge(e.fechaCompra,e.garantiaMeses);
-        return`<tr>
-          <td>
-            <b style="font-size:.72rem">${es(e.descrip)}</b><br>
-            <span style="font-size:.61rem;color:var(--dim)">${es(e.marca)} · ${es(e.serie)}</span>
-            ${e.proveedor?`<br><span style="font-size:.6rem;color:var(--cy)">📦 ${es(e.proveedor)}</span>`:''}
-          </td>
-          <td>${tipoB}</td>
-          <td>${pill(e.estado,'eq')}</td>
-          <td style="font-size:.64rem">${fd(pd)}</td>
-          <td>${dchip(d)}</td>
-          <td>${garBadge}</td>
-          <td><div class="arow">
-            <button class="ab" onclick="editR('equipo',${e.id})">✏️</button>
-            <button class="ab" style="background:var(--roli);color:var(--ro);border-color:var(--roba);font-weight:700" onclick="iniciarBajaEquipo(${e.id})" title="Dar de baja · pasa a lista SKINET">↓ Baja</button>
-          </div></td>
-        </tr>`;
-      }).join('')}</tbody></table></div>`;
+    <div id="eqCards" style="display:flex;flex-direction:column;gap:.38rem">
+    ${shown.map(e=>{
+      const pd=toD(e.proximoMant),d=diff(hoy,pd);
+      const deBaja=e.estado==='De Baja';
+      const vencido=d!==null&&d<0;
+      const proximo=d!==null&&d>=0&&d<30;
+      const stripColor=deBaja?'var(--dim)':vencido?'var(--ro)':proximo?'var(--na)':'var(--ve2)';
+      const estadoLabel=deBaja?'🗑 De Baja':vencido?'⚠ Vencido':proximo?'⏰ Próximo':'✓ OK';
+      const estadoColor=deBaja?'var(--dim)':vencido?'var(--ro)':proximo?'var(--na)':'var(--ve2)';
+      return`<div onclick="verEquipo(${e.id})"
+        style="background:var(--s1);border:1.5px solid ${deBaja?'var(--dim)':vencido?'var(--roba)':proximo?'var(--naba)':'var(--brd)'};
+        border-left:4px solid ${stripColor};border-radius:10px;padding:.6rem .7rem;
+        cursor:pointer;opacity:${deBaja?'.55':'1'};box-shadow:var(--sh);
+        display:flex;align-items:center;gap:.55rem;-webkit-tap-highlight-color:transparent">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.75rem;font-weight:700;line-height:1.3;${deBaja?'text-decoration:line-through;color:var(--dim)':''}">${es(e.descrip)}</div>
+          <div style="font-size:.63rem;color:var(--dim);margin-top:.12rem">${es(e.marca)||'—'} · ${es(e.serie)||'—'}</div>
+          <div style="display:flex;gap:.25rem;flex-wrap:wrap;margin-top:.22rem;align-items:center">
+            ${e.tipoEq==='Comodato'?`<span class="tipo-c">Comodato</span>`:`<span class="tipo-h">Hospital</span>`}
+            <span style="font-size:.6rem;font-weight:700;color:${estadoColor}">${estadoLabel}</span>
+            ${d!==null&&!deBaja?`<span style="font-size:.6rem;color:var(--dim)">· Mant: ${fd(pd)}</span>`:''}
+          </div>
+        </div>
+        <div style="flex-shrink:0;text-align:right">
+          ${dchip(deBaja?null:d)}
+          <div style="font-size:.58rem;color:var(--dim);margin-top:.15rem">${deBaja?'Pend. SKINET':'tap p/ ver'}</div>
+        </div>
+      </div>`;
+    }).join('')}
+    </div>`;
 }
 function filtrarFamiliaEq(val){
   _eqFamilia=val;
-  // Limpiar buscador al cambiar familia
   const busc=g('eqBuscador');if(busc)busc.value='';
-  // Recargar sin perder posición en pantalla
   openMod('equipos');
+}
+function filtrarEqCards(v){
+  const lv=(v||'').toLowerCase();
+  document.querySelectorAll('#eqCards > div').forEach(card=>{
+    card.style.display=!lv||card.textContent.toLowerCase().includes(lv)?'':'none';
+  });
+}
+
+async function verEquipo(id){
+  const all=await getAll('equipos');
+  const e=all.find(x=>x.id===id);
+  if(!e)return;
+  const hoy=today();
+  const pd=toD(e.proximoMant),d=diff(hoy,pd);
+  const deBaja=e.estado==='De Baja';
+  const garBadge=garantiaBadge(e.fechaCompra,e.garantiaMeses);
+  const vencido=d!==null&&d<0;
+  const proximo=d!==null&&d>=0&&d<30;
+  const alertColor=deBaja?'var(--dim)':vencido?'var(--ro)':proximo?'var(--na)':'var(--ve2)';
+
+  // Buscar historial: bajas y actas relacionadas con este equipo
+  const bajas=await getAll('bajas');
+  const actas=await getAll('actas');
+  const histBajas=bajas.filter(b=>b.equipoId===id||(b.equipo&&b.equipo.toUpperCase()===es(e.descrip).toUpperCase()&&b.servicio===e.servicio));
+  const histActas=actas.filter(a=>a.equipo&&a.equipo.toUpperCase()===es(e.descrip).toUpperCase()&&mSrv(a.servicio,e.servicio));
+
+  g('fptit').innerHTML=`🩺 ${es(e.descrip)}`;
+  g('fpbody').innerHTML=`
+    <!-- Estado y alertas -->
+    <div style="background:${deBaja?'var(--s3)':vencido?'var(--roli)':proximo?'var(--nali)':'var(--veli)'};
+      border:1.5px solid ${deBaja?'var(--brd)':vencido?'var(--roba)':proximo?'var(--naba)':'var(--veba)'};
+      border-radius:9px;padding:.5rem .75rem;margin-bottom:.65rem;
+      display:flex;align-items:center;gap:.5rem">
+      <div style="font-size:1.3rem">${deBaja?'🗑':vencido?'🚨':proximo?'⏰':'✅'}</div>
+      <div>
+        <div style="font-size:.75rem;font-weight:700;color:${alertColor}">
+          ${deBaja?'De Baja · Pendiente SKINET':vencido?'Mantenimiento VENCIDO':proximo?'Mantenimiento próximo':'En servicio · OK'}
+        </div>
+        <div style="font-size:.65rem;color:var(--dim)">
+          ${pill(e.estado,'eq')} ${d!==null&&!deBaja?`· Próx. mant: ${fd(pd)} (${Math.abs(d)}d ${d<0?'vencido':'restantes'})`:''}
+        </div>
+      </div>
+    </div>
+
+    <!-- Datos principales -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem .6rem;margin-bottom:.65rem;font-size:.72rem">
+      <div><span style="color:var(--dim);font-size:.63rem;display:block">Marca / Modelo</span><b>${es(e.marca)||'—'}</b></div>
+      <div><span style="color:var(--dim);font-size:.63rem;display:block">N° Serie</span><b>${es(e.serie)||'—'}</b></div>
+      <div><span style="color:var(--dim);font-size:.63rem;display:block">Tipo</span>${e.tipoEq==='Comodato'?`<span class="tipo-c">Comodato</span>`:`<span class="tipo-h">Hospital</span>`}</div>
+      <div><span style="color:var(--dim);font-size:.63rem;display:block">Garantía</span>${garBadge}</div>
+      <div><span style="color:var(--dim);font-size:.63rem;display:block">Último mant.</span><b>${fd(toD(e.ultimoMant))||'—'}</b></div>
+      <div><span style="color:var(--dim);font-size:.63rem;display:block">Próx. mant.</span><b>${fd(pd)||'—'}</b></div>
+      ${e.proveedor?`<div style="grid-column:1/-1"><span style="color:var(--dim);font-size:.63rem;display:block">Proveedor</span><b>📦 ${es(e.proveedor)}</b></div>`:''}
+      ${e.fechaCompra?`<div><span style="color:var(--dim);font-size:.63rem;display:block">Fecha compra</span><b>${es(e.fechaCompra)}</b></div>`:''}
+      <div><span style="color:var(--dim);font-size:.63rem;display:block">Sub-servicio</span><b>${es(e.subServicio)||'—'}</b></div>
+    </div>
+
+    <!-- Historial de actas -->
+    ${histActas.length?`
+      <div style="font-size:.68rem;font-weight:700;color:var(--dim);margin-bottom:.28rem;text-transform:uppercase;letter-spacing:.03em">📄 Actas (${histActas.length})</div>
+      <div style="font-size:.67rem;margin-bottom:.6rem">
+        ${histActas.map(a=>`<div style="border-left:3px solid var(--az3);padding:.25rem .5rem;margin-bottom:.2rem;background:var(--s2);border-radius:0 6px 6px 0">
+          ${es(a.tipo||'—')} → ${es(a.destino||'—')} <span style="color:var(--dim)">${a.fecha||''}</span>
+        </div>`).join('')}
+      </div>`:''}
+
+    <!-- Historial de bajas previas -->
+    ${histBajas.length?`
+      <div style="font-size:.68rem;font-weight:700;color:var(--ro);margin-bottom:.28rem;text-transform:uppercase;letter-spacing:.03em">🗑 Registro de baja</div>
+      <div style="font-size:.67rem;margin-bottom:.6rem">
+        ${histBajas.map(b=>`<div style="border-left:3px solid var(--roba);padding:.25rem .5rem;margin-bottom:.2rem;background:var(--roli);border-radius:0 6px 6px 0">
+          ${es(b.motivo)} · ${b.fecha||'—'} ${b.skinetOk?'<span class="pill pok" style="font-size:.58rem">✓ SKINET</span>':'<span class="pill pwn" style="font-size:.58rem">⚠ SKINET pend.</span>'}
+          ${b.observaciones?`<br><span style="color:var(--dim)">${es(b.observaciones)}</span>`:''}
+        </div>`).join('')}
+      </div>`:''}
+  `;
+
+  // Botones de acción según estado
+  const btns=deBaja
+    ?`<button class="btn bgr" onclick="closeForm()">Cerrar</button>
+       <button class="btn baz2" onclick="closeForm();editR('equipo',${e.id})">✏️ Editar</button>`
+    :`<button class="btn bgr" onclick="closeForm()">Cerrar</button>
+       <button class="btn baz2" onclick="closeForm();editR('equipo',${e.id})">✏️ Editar</button>
+       <button class="btn" style="background:var(--roli);color:var(--ro);border:1.5px solid var(--roba);font-weight:700" onclick="closeForm();iniciarBajaEquipo(${e.id})">🗑 Dar de baja</button>`;
+  g('fpfoot').innerHTML=btns;
+  g('fp').classList.add('open');
 }
 
 async function iniciarBajaEquipo(id){
