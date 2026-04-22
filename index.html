@@ -469,6 +469,7 @@ const EST_EQ=['En Servicio','Rep. en Fabrica','En Deposito IC','Esp. Repuestos',
 const EST_EX=['Iniciado','En Trámite','Aprobado','Archivado','Rechazado'];
 const EST_RIC58=['Enviado','Negado','Convertido a Expediente'];
 const EST_OR=['Iniciada','En Proceso','Completada','Cancelada'];
+const EST_ACTA=['Abierta','Equipo enviado','En reparación','Esperando repuestos','Equipo regresó','Cerrada'];
 const TIPOS_COMPRA=['Caja Chica','Reparación','Orden de Provisión (OC)'];
 const EST_OC=['Pendiente','Sin Oferentes','Entregado','Baja'];
 const MOTIVOS=['Obsoleto','Rotura Irreparable','Pérdida','Robo','Otro'];
@@ -588,8 +589,8 @@ async function renderHome(){
   const hc=g('homeCards');
   if(!hc)return;
   try{
-    const [tareas,compras,rics,exps,eqs]=await Promise.all([
-      getAll('tareas'),getAll('compras'),getAll('ric58'),getAll('expedientes'),getAll('equipos')
+    const [tareas,compras,rics,exps,eqs,actas]=await Promise.all([
+      getAll('tareas'),getAll('compras'),getAll('ric58'),getAll('expedientes'),getAll('equipos'),getAll('actas')
     ]);
     const hoy=today();
     // ── Tareas ──
@@ -611,6 +612,10 @@ async function renderHome(){
     const hasCompAlert=ocSinOfert.length>0;
     const hasExpAlert=ric58Env.length>0;
     const hasEqAlert=eqVenc.length>0||eqProx.length>0;
+    // ── Actas ──
+    const actAbiertas=actas.filter(a=>a.estado!=='Cerrada'&&a.estado!=='Cancelada');
+    const actVencidas=actAbiertas.filter(a=>{const d=diff(toD(a.fecha),hoy);return d!==null&&d>30;});
+    const hasActaAlert=actVencidas.length>0;
 
     hc.innerHTML=`
       <!-- TAREAS -->
@@ -665,6 +670,19 @@ async function renderHome(){
         <div style="display:flex;gap:.25rem;flex-wrap:wrap">
           <span class="bx baz">${expAbiertos.length} abiertos</span>
           ${ric58Env.length?`<span class="bx bpu">${ric58Env.length} RIC-58</span>`:''}
+        </div>
+      </div>
+
+      <!-- ACTAS -->
+      <div onclick="showHomeActas()" style="
+        background:var(--s1);border:1.5px solid ${hasActaAlert?'var(--naba)':'var(--brd)'};
+        border-top:4px solid ${actVencidas.length?'var(--na)':actAbiertas.length?'var(--az)':'var(--ve2)'};
+        border-radius:var(--r);padding:.9rem .75rem;cursor:pointer;box-shadow:var(--sh)">
+        <div style="font-size:1.6rem;margin-bottom:.3rem">📄</div>
+        <div style="font-size:.78rem;font-weight:700;margin-bottom:.35rem">Actas Reparación</div>
+        <div style="display:flex;gap:.25rem;flex-wrap:wrap">
+          <span class="bx baz">${actAbiertas.length} abiertas</span>
+          ${actVencidas.length?`<span class="bx bna">⏰ ${actVencidas.length} +30d</span>`:''}
         </div>
       </div>
     `;
@@ -818,6 +836,88 @@ async function showHomeExpedientes(){
     if(!exps.length&&!rics.length)html+=`<div class="emp"><div class="ei">📁</div>Sin expedientes registrados.</div>`;
     el.innerHTML=html;
   }catch(e){el.innerHTML=`<div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div>`}
+}
+
+// ── Vista Actas global desde Home ──
+async function showHomeActas(){
+  showView('globalView');
+  curSrv=null;curSubSrv=null;curMod=null;
+  const el=g('globalContent');
+  el.innerHTML='<div style="color:var(--dim);font-size:.78rem;padding:.4rem">Cargando...</div>';
+  try{
+    const actas=await getAll('actas');
+    const hoy=today();
+    const abiertas=actas.filter(a=>a.estado!=='Cerrada'&&a.estado!=='Cancelada');
+    const cerradas=actas.filter(a=>a.estado==='Cerrada'||a.estado==='Cancelada');
+    const vencidas=abiertas.filter(a=>{const d=diff(toD(a.fecha),hoy);return d!==null&&d>30;});
+    // Agrupar por servicio
+    const byServ={};
+    abiertas.forEach(a=>{
+      const k=a.servicio||'General';
+      if(!byServ[k])byServ[k]=[];
+      byServ[k].push(a);
+    });
+    let html=`
+      <button class="volver" onclick="goHome()">← Inicio</button>
+      <div class="sectit"><span>📄</span> Actas de Reparación · Global</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin-bottom:.7rem">
+        <div style="background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
+          <div style="font-size:1.1rem">📄</div>
+          <div style="font-size:1rem;font-weight:700;color:var(--az)">${abiertas.length}</div>
+          <div style="font-size:.6rem;color:var(--dim)">Abiertas</div>
+        </div>
+        <div style="background:${vencidas.length?'var(--nali)':'var(--s1)'};border:1.5px solid ${vencidas.length?'var(--naba)':'var(--brd)'};border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
+          <div style="font-size:1.1rem">⏰</div>
+          <div style="font-size:1rem;font-weight:700;color:${vencidas.length?'var(--na)':'var(--ve2)'}">${vencidas.length}</div>
+          <div style="font-size:.6rem;color:var(--dim)">+30 días</div>
+        </div>
+        <div style="background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
+          <div style="font-size:1.1rem">✅</div>
+          <div style="font-size:1rem;font-weight:700;color:var(--ve2)">${cerradas.length}</div>
+          <div style="font-size:.6rem;color:var(--dim)">Cerradas</div>
+        </div>
+      </div>`;
+    if(vencidas.length){
+      html+=`<div class="warnbx" style="margin-bottom:.55rem">⏰ <b>${vencidas.length} acta${vencidas.length>1?'s':''}</b> con más de 30 días sin retorno del equipo. Contactar al proveedor.</div>`;
+    }
+    Object.keys(byServ).sort().forEach(srv=>{
+      const rows=byServ[srv];
+      const srvInfo=SRVS.find(s=>mSrv(s.id,srv));
+      html+=`<div class="stitle">${srvInfo?srvInfo.ico+' ':''} ${es(srv)} (${rows.length})</div>`;
+      rows.forEach(a=>{
+        const fi=toD(a.fecha),d=diff(fi,hoy);
+        const alerta=d!==null&&d>30;
+        const stColor=a.estado==='Equipo regresó'?'var(--ve2)':a.estado==='En reparación'||a.estado==='Esperando repuestos'?'var(--na)':a.estado==='Equipo enviado'?'var(--az)':'var(--dim)';
+        html+=`<div style="background:var(--s1);border:1.5px solid ${alerta?'var(--naba)':'var(--brd)'};border-left:4px solid ${stColor};
+          border-radius:10px;padding:.6rem .7rem;margin-bottom:.35rem;box-shadow:var(--sh)">
+          ${alerta?`<div style="font-size:.64rem;font-weight:700;color:var(--na);margin-bottom:.15rem">⏰ ${d}d — verificar con proveedor</div>`:''}
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <div style="flex:1">
+              <b style="font-size:.74rem">${es(a.equipo)}</b>
+              <span class="pill pin" style="margin-left:.3rem;background:${stColor+'22'};color:${stColor};border-color:${stColor};font-size:.58rem">${es(a.estado||'Abierta')}</span>
+              <div style="font-size:.62rem;color:var(--dim);margin-top:.12rem">
+                ${a.destino?`📦 ${es(a.destino)} · `:''}${a.fecha||'—'} · <b style="color:${alerta?'var(--na)':'var(--cy)'}">${d!==null?d+'d':''}</b>
+                ${a.subServicio?` · ${es(a.subServicio)}`:''}
+              </div>
+            </div>
+            <div style="display:flex;gap:.2rem">
+              <button class="ab" style="background:var(--veli);color:var(--ve2);border-color:var(--veba)" onclick="cerrarActaG(${a.id})" title="Cerrar">✔</button>
+              <button class="ab" onclick="curSrv=null;editR('acta',${a.id})">✏️</button>
+            </div>
+          </div>
+        </div>`;
+      });
+    });
+    if(!abiertas.length)html+=`<div class="emp"><div class="ei">📄</div>Sin actas abiertas.</div>`;
+    el.innerHTML=html;
+  }catch(e){el.innerHTML=`<div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div>`}
+}
+async function cerrarActaG(id){
+  const hoy=new Date().toLocaleDateString('es-AR');
+  const all=await getAll('actas');
+  const a=all.find(x=>x.id===id);if(!a)return;
+  await put('actas',{...a,estado:'Cerrada',fechaCierre:hoy});
+  toast('Acta cerrada ✔','ok');await showHomeActas();
 }
 
 // ════════════════════════════════════
@@ -1348,19 +1448,84 @@ async function modEx(tc){
   const all=await getAll('expedientes');
   const rows=all.filter(e=>mSrv(e.servicio,curSrv)&&matchSub(e));
   const hoy=today();
-  const ini=rows.filter(e=>e.estado==='Iniciado'||!e.estado);
-  const tr=rows.filter(e=>e.estado==='En Trámite');
-  const ap=rows.filter(e=>e.estado==='Aprobado');
-  const ot=rows.filter(e=>e.estado==='Archivado'||e.estado==='Rechazado');
+  const activos=rows.filter(e=>e.estado!=='Archivado'&&e.estado!=='Rechazado');
+  const archivados=rows.filter(e=>e.estado==='Archivado'||e.estado==='Rechazado');
+  const renderExpCard=(e)=>{
+    const fi=toD(e.fechaInicio),d=diff(fi,hoy);
+    const stColor=e.estado==='Aprobado'?'var(--ve2)':e.estado==='En Trámite'?'var(--az)':'var(--na)';
+    return`<div style="background:var(--s1);border:1.5px solid var(--brd);border-left:4px solid ${stColor};
+      border-radius:10px;padding:.65rem .75rem;margin-bottom:.38rem;box-shadow:var(--sh)">
+      <div style="display:flex;align-items:flex-start;gap:.5rem">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;gap:.28rem;flex-wrap:wrap;align-items:center;margin-bottom:.25rem">
+            <span style="font-size:.75rem;font-weight:700;color:var(--az)">Exp. ${es(e.numero)}</span>
+            ${pill(e.estado,'ex')}
+          </div>
+          <div style="font-size:.73rem;line-height:1.4;margin-bottom:.2rem">${es(e.descripcion)}</div>
+          <div style="font-size:.62rem;color:var(--dim)">Inicio: ${fd(fi)||'—'} · ${d!==null?`<b style="color:var(--cy)">${d}d transcurridos</b>`:'sin fecha'}</div>
+          ${e.responsable?`<div style="font-size:.61rem;color:var(--dim)">👤 ${es(e.responsable)}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.22rem;flex-shrink:0">
+          <button class="ab" onclick="cambiarEstadoEx(${e.id})" title="Cambiar estado" style="background:var(--az3);color:var(--az);border-color:var(--az)">≡</button>
+          <button class="ab" onclick="editR('expediente',${e.id})">✏️</button>
+          <button class="ab" onclick="archivarEx(${e.id})" title="Archivar">🗃</button>
+          <button class="ab" onclick="delR('expediente',${e.id})">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  };
   tc.innerHTML=`
     <div class="tbar">
       <button class="btn baz2" onclick="openForm('expediente')">+ Agregar</button>
       <div class="sp"></div>
-      <span class="bx bna">${tr.length} trámite</span>
-      <span class="bx bgr2">${ap.length} aprobados</span>
+      <span class="bx baz">${activos.length} activos</span>
+      ${archivados.length?`<span class="bx bdim">${archivados.length} archivados</span>`:''}
     </div>
-    ${exS('📂 Iniciados',ini,hoy)}${exS('⏳ En Trámite',tr,hoy)}${ap.length?exS('✅ Aprobados',ap,hoy):''}${ot.length?exS('📁 Archivados/Rechazados',ot,hoy):''}
-    ${!rows.length?`<div class="emp"><div class="ei">📁</div>Sin expedientes. Importá <b>expe.xlsx</b> o agregar manualmente.</div>`:''}`;
+    ${!rows.length?`<div class="emp"><div class="ei">📁</div>Sin expedientes. Importá <b>expe.xlsx</b> o agregá manualmente.</div>`:''}
+    ${activos.map(renderExpCard).join('')}
+    ${archivados.length?`
+      <details style="margin-top:.4rem">
+        <summary style="font-size:.72rem;font-weight:700;color:var(--dim);cursor:pointer;padding:.3rem 0">
+          📁 Archivados / Rechazados (${archivados.length})
+        </summary>
+        <div style="margin-top:.35rem;opacity:.7">
+          ${archivados.map(e=>`<div style="background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.5rem .65rem;margin-bottom:.3rem;display:flex;align-items:center;gap:.5rem">
+            <div style="flex:1;min-width:0">
+              <span style="font-size:.7rem;font-weight:700;color:var(--dim)">Exp. ${es(e.numero)}</span>
+              ${pill(e.estado,'ex')}
+              <div style="font-size:.67rem;color:var(--dim);margin-top:.12rem">${es(e.descripcion)}</div>
+            </div>
+            <div style="display:flex;gap:.2rem">
+              <button class="ab" onclick="reabrirEx(${e.id})" title="Reabrir">↩</button>
+              <button class="ab" onclick="delR('expediente',${e.id})">🗑</button>
+            </div>
+          </div>`).join('')}
+        </div>
+      </details>`:''}`;
+}
+async function cambiarEstadoEx(id){
+  const all=await getAll('expedientes');
+  const e=all.find(x=>x.id===id);if(!e)return;
+  const estados=EST_EX.filter(s=>s!=='Archivado'&&s!=='Rechazado');
+  // Ciclo rápido: siguiente estado
+  const idx=estados.indexOf(e.estado||'Iniciado');
+  const next=estados[(idx+1)%estados.length];
+  await put('expedientes',{...e,estado:next,mod:new Date().toLocaleDateString('es-AR')});
+  toast('Estado → '+next,'ok');await refreshView();
+}
+async function archivarEx(id){
+  cfm2('¿Archivar este expediente?',async()=>{
+    const all=await getAll('expedientes');
+    const e=all.find(x=>x.id===id);if(!e)return;
+    await put('expedientes',{...e,estado:'Archivado',mod:new Date().toLocaleDateString('es-AR')});
+    toast('Expediente archivado','ok');await refreshView();
+  });
+}
+async function reabrirEx(id){
+  const all=await getAll('expedientes');
+  const e=all.find(x=>x.id===id);if(!e)return;
+  await put('expedientes',{...e,estado:'Iniciado',mod:new Date().toLocaleDateString('es-AR')});
+  toast('Expediente reabierto','ok');await refreshView();
 }
 function exS(t,rows,hoy){
   if(!rows.length)return'';
@@ -1578,20 +1743,90 @@ async function modOr(tc){
 async function modAc(tc){
   const all=await getAll('actas');
   const rows=all.filter(e=>mSrv(e.servicio,curSrv)&&matchSub(e));
+  const hoy=today();
+  const abiertas=rows.filter(a=>a.estado!=='Cerrada'&&a.estado!=='Cancelada');
+  const cerradas=rows.filter(a=>a.estado==='Cerrada'||a.estado==='Cancelada');
+  const renderActaCard=(a)=>{
+    const fi=toD(a.fecha),d=diff(fi,hoy);
+    const diasStr=d!==null?`${d}d en curso`:'—';
+    const alerta=d!==null&&d>30;
+    const stColor=a.estado==='Equipo regresó'?'var(--ve2)':a.estado==='En reparación'||a.estado==='Esperando repuestos'?'var(--na)':a.estado==='Equipo enviado'?'var(--az)':'var(--dim)';
+    return`<div style="background:var(--s1);border:1.5px solid ${alerta?'var(--naba)':'var(--brd)'};border-left:4px solid ${stColor};
+      border-radius:10px;padding:.65rem .75rem;margin-bottom:.38rem;box-shadow:var(--sh)">
+      ${alerta?`<div style="font-size:.65rem;font-weight:700;color:var(--na);margin-bottom:.22rem">⏰ ${d}d sin retorno — verificar con proveedor</div>`:''}
+      <div style="display:flex;align-items:flex-start;gap:.5rem">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.76rem;font-weight:700;margin-bottom:.18rem">${es(a.equipo)}</div>
+          <div style="display:flex;gap:.25rem;flex-wrap:wrap;margin-bottom:.22rem">
+            <span class="pill pin" style="background:${stColor+'22'};color:${stColor};border-color:${stColor}">${es(a.estado||'Abierta')}</span>
+            ${a.tipo?`<span class="pill pdim">${es(a.tipo)}</span>`:''}
+          </div>
+          <div style="font-size:.63rem;color:var(--dim)">
+            ${a.destino?`📦 ${es(a.destino)}`:''}
+            ${fi?` · Salida: ${fd(fi)}`:''}
+            · <b style="color:${alerta?'var(--na)':'var(--cy)'}">${diasStr}</b>
+          </div>
+          ${a.observaciones?`<div style="font-size:.62rem;color:var(--dim);margin-top:.12rem">${es(a.observaciones)}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.22rem;flex-shrink:0">
+          <button class="ab" onclick="cambiarEstadoAcBtn(${a.id})" title="Avanzar estado" style="background:var(--az3);color:var(--az);border-color:var(--az)">≡</button>
+          <button class="ab" onclick="editR('acta',${a.id})">✏️</button>
+          <button class="ab" style="background:var(--veli);color:var(--ve2);border-color:var(--veba)" onclick="cerrarActa(${a.id})" title="Cerrar acta — equipo recibido">✔</button>
+          <button class="ab" onclick="delR('acta',${a.id})">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  };
   tc.innerHTML=`
-    <div class="tbar"><button class="btn baz2" onclick="openForm('acta')">+ Nueva Acta</button><div class="sp"></div><span class="bx baz">${rows.length}</span></div>
-    ${!rows.length?`<div class="emp"><div class="ei">📄</div>Sin actas.</div>`:`
-    <div class="tw"><table><thead><tr><th>Equipo</th><th>Tipo</th><th>Destino</th><th>Fecha</th><th></th></tr></thead>
-    <tbody>${rows.map(a=>`<tr>
-      <td><b style="font-size:.71rem">${es(a.equipo)}</b></td>
-      <td><span class="pill pin">${es(a.tipo)}</span></td>
-      <td style="font-size:.65rem">${es(a.destino)}</td>
-      <td style="font-size:.62rem">${a.fecha||'—'}</td>
-      <td><div class="arow">
-        <button class="ab" onclick="editR('acta',${a.id})">✏️</button>
-        <button class="ab" onclick="delR('acta',${a.id})">🗑</button>
-      </div></td>
-    </tr>`).join('')}</tbody></table></div>`}`;
+    <div class="tbar">
+      <button class="btn baz2" onclick="openForm('acta')">+ Nueva Acta</button>
+      <div class="sp"></div>
+      <span class="bx baz">${abiertas.length} abiertas</span>
+      ${abiertas.filter(a=>{const d=diff(toD(a.fecha),hoy);return d!==null&&d>30;}).length?
+        `<span class="bx bna">⏰ ${abiertas.filter(a=>{const d=diff(toD(a.fecha),hoy);return d!==null&&d>30;}).length} +30d</span>`:''}
+    </div>
+    ${!rows.length?`<div class="emp"><div class="ei">📄</div>Sin actas de reparación.</div>`:''}
+    ${abiertas.map(renderActaCard).join('')}
+    ${cerradas.length?`
+      <details style="margin-top:.4rem">
+        <summary style="font-size:.72rem;font-weight:700;color:var(--dim);cursor:pointer;padding:.3rem 0">
+          ✅ Cerradas (${cerradas.length})
+        </summary>
+        <div style="margin-top:.35rem;opacity:.7">
+          ${cerradas.map(a=>`<div style="background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.5rem .65rem;margin-bottom:.3rem;display:flex;align-items:center;gap:.5rem">
+            <div style="flex:1">
+              <b style="font-size:.7rem">${es(a.equipo)}</b>
+              <span class="pill pok" style="margin-left:.25rem;font-size:.58rem">${es(a.estado)}</span>
+              <div style="font-size:.62rem;color:var(--dim)">${a.destino?es(a.destino):''} · ${a.fecha||'—'}</div>
+            </div>
+            <button class="ab" onclick="reabrirActa(${a.id})" title="Reabrir">↩</button>
+            <button class="ab" onclick="delR('acta',${a.id})">🗑</button>
+          </div>`).join('')}
+        </div>
+      </details>`:''}
+    <div class="infobx" style="margin-top:.5rem">💡 Las actas con <b>+30 días sin retorno</b> se marcan en naranja como recordatorio de contactar al proveedor.</div>`;
+}
+async function cambiarEstadoAcBtn(id){
+  const all=await getAll('actas');
+  const a=all.find(x=>x.id===id);if(!a)return;
+  const estados=EST_ACTA.filter(s=>s!=='Cerrada');
+  const idx=estados.indexOf(a.estado||'Abierta');
+  const next=estados[(idx+1)%estados.length];
+  await put('actas',{...a,estado:next});
+  toast('Estado → '+next,'ok');await refreshView();
+}
+async function cerrarActa(id){
+  const hoy=new Date().toLocaleDateString('es-AR');
+  const all=await getAll('actas');
+  const a=all.find(x=>x.id===id);if(!a)return;
+  await put('actas',{...a,estado:'Cerrada',fechaCierre:hoy});
+  toast('Acta cerrada ✔','ok');await refreshView();
+}
+async function reabrirActa(id){
+  const all=await getAll('actas');
+  const a=all.find(x=>x.id===id);if(!a)return;
+  await put('actas',{...a,estado:'Equipo enviado'});
+  toast('Acta reabierta','ok');await refreshView();
 }
 
 // ── BAJAS ──
@@ -1956,6 +2191,7 @@ async function openForm(type,data=null){
           <div class="fg"><label>Tipo</label><select id="fTipo">${TIPOS_A.map(t=>`<option ${d.tipo===t?'selected':''}>${t}</option>`).join('')}</select></div>
           <div class="fg"><label>Destino/Origen</label><input id="fDest" value="${es(d.destino)}"></div>
         </div>
+        <div class="fg"><label>Estado</label><select id="fEstA">${EST_ACTA.map(s=>`<option ${(d.estado||'Equipo enviado')===s?'selected':''}>${s}</option>`).join('')}</select></div>
         <div class="fg"><label>Observaciones</label><textarea id="fObs">${es(d.observaciones||d.descripcion)}</textarea></div>`;
       break;}
     case'tarea':
@@ -2039,7 +2275,7 @@ async function saveForm(){
         obj={numero:n,servicio:gv('fSrv'),subServicio:gv('fSS'),descripcion:gv('fDesc'),fechaInicio:gv('fFI'),estado:gv('fEst'),responsable:gv('fResp')};
         store='ordenes';break;}
       case'acta':{const eq=gv('fEq');if(!eq){toast('Equipo requerido','er');return}
-        obj={equipo:eq,servicio:gv('fSrv'),subServicio:gv('fSS'),tipo:gv('fTipo'),destino:gv('fDest'),observaciones:gv('fObs'),fecha:hoy};
+        obj={equipo:eq,servicio:gv('fSrv'),subServicio:gv('fSS'),tipo:gv('fTipo'),destino:gv('fDest'),observaciones:gv('fObs'),estado:gv('fEstA')||'Equipo enviado',fecha:hoy};
         store='actas';break;}
       case'tarea':{const td=gv('fDesc');if(!td){toast('Descripción requerida','er');return}
         obj={tipo:gv('fTipo')||'Tarea General',descripcion:td,detalle:gv('fDet'),skinet:gv('fSk')==='1',servicio:gv('fSrv'),subServicio:gv('fSS'),fecha:hoy};
