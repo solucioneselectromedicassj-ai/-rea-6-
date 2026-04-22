@@ -290,8 +290,18 @@ td{padding:.4rem .52rem;vertical-align:middle}
     <!-- BREADCRUMB -->
     <div id="breadcrumb"></div>
 
+    <!-- HOME: tablero de control principal -->
+    <div id="homeView" style="display:block">
+      <div class="sectit" style="margin-bottom:.6rem"><span>🏥</span> Tablero de Control</div>
+      <div id="homeCards" style="display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem"></div>
+    </div>
+
     <!-- DASHBOARD: service cards -->
-    <div id="dashView" style="display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem"></div>
+    <div id="dashView" style="display:none">
+      <button class="volver" onclick="goHome()">← Inicio</button>
+      <div class="sectit" style="margin-bottom:.5rem"><span>🏥</span> Servicios</div>
+      <div id="dashGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem"></div>
+    </div>
 
     <!-- SERVICE VIEW: sub-service cards -->
     <div id="serviceView" style="display:none">
@@ -531,7 +541,7 @@ async function boot(){
   showLoad('Cargando datos...');
   try{
     await autoMigrate();
-    await renderDash();await loadDates();await checkAlerts()
+    await renderHome();await loadDates();await checkAlerts()
   }finally{hideLoad()}
 }
 
@@ -572,6 +582,245 @@ function showLoad(m=''){g('loadScr').style.display='flex';g('loadMsg').textConte
 function hideLoad(){g('loadScr').style.display='none'}
 
 // ════════════════════════════════════
+// HOME — Tablero de Control Principal
+// ════════════════════════════════════
+async function renderHome(){
+  const hc=g('homeCards');
+  if(!hc)return;
+  try{
+    const [tareas,compras,rics,exps,eqs]=await Promise.all([
+      getAll('tareas'),getAll('compras'),getAll('ric58'),getAll('expedientes'),getAll('equipos')
+    ]);
+    const hoy=today();
+    // ── Tareas ──
+    const tarAbiertas=tareas.filter(t=>t.estado!=='Cerrada'&&t.estado!=='Archivada');
+    const tarSkPend=tareas.filter(t=>t.tipo==='RIC01'&&!t.skinet&&t.estado!=='Archivada');
+    const tarCerradas=tareas.filter(t=>t.estado==='Cerrada');
+    // ── Compras ──
+    const compActivas=compras.filter(c=>c.estadoOC!=='Entregado'&&c.estadoOC!=='Baja');
+    const ocSinOfert=compras.filter(c=>c.tipo==='Orden de Provisión (OC)'&&c.estadoOC==='Sin Oferentes');
+    const ocPendiente=compras.filter(c=>c.tipo==='Orden de Provisión (OC)'&&(!c.estadoOC||c.estadoOC==='Pendiente'));
+    // ── Expedientes ──
+    const expAbiertos=exps.filter(e=>e.estado!=='Archivado'&&e.estado!=='Rechazado');
+    const ric58Env=rics.filter(r=>r.estado==='Enviado');
+    // ── Equipos ──
+    const eqVenc=eqs.filter(e=>{const d=diff(hoy,toD(e.proximoMant));return d!==null&&d<0;});
+    const eqProx=eqs.filter(e=>{const d=diff(hoy,toD(e.proximoMant));return d!==null&&d>=0&&d<30;});
+
+    const hasTarAlert=tarSkPend.length>0||tarCerradas.length>0;
+    const hasCompAlert=ocSinOfert.length>0;
+    const hasExpAlert=ric58Env.length>0;
+    const hasEqAlert=eqVenc.length>0||eqProx.length>0;
+
+    hc.innerHTML=`
+      <!-- TAREAS -->
+      <div onclick="showHomeTareas()" style="
+        background:var(--s1);border:1.5px solid ${hasTarAlert?'var(--naba)':'var(--brd)'};
+        border-top:4px solid ${tarSkPend.length?'var(--ro)':tarCerradas.length?'var(--na)':'var(--ve2)'};
+        border-radius:var(--r);padding:.9rem .75rem;cursor:pointer;box-shadow:var(--sh);position:relative">
+        <div style="font-size:1.6rem;margin-bottom:.3rem">✅</div>
+        <div style="font-size:.78rem;font-weight:700;margin-bottom:.35rem">Tareas</div>
+        <div style="display:flex;gap:.25rem;flex-wrap:wrap">
+          <span class="bx baz">${tarAbiertas.length} abiertas</span>
+          ${tarSkPend.length?`<span class="bx bro">⚠ ${tarSkPend.length} SKINET</span>`:''}
+          ${tarCerradas.length?`<span class="bx bna">${tarCerradas.length} cerradas</span>`:''}
+        </div>
+      </div>
+
+      <!-- SERVICIOS -->
+      <div onclick="goServicios()" style="
+        background:var(--s1);border:1.5px solid ${hasEqAlert?'var(--roba)':'var(--brd)'};
+        border-top:4px solid ${eqVenc.length?'var(--ro)':eqProx.length?'var(--na)':'var(--ve2)'};
+        border-radius:var(--r);padding:.9rem .75rem;cursor:pointer;box-shadow:var(--sh)">
+        <div style="font-size:1.6rem;margin-bottom:.3rem">🏥</div>
+        <div style="font-size:.78rem;font-weight:700;margin-bottom:.35rem">Servicios</div>
+        <div style="display:flex;gap:.25rem;flex-wrap:wrap">
+          <span class="bx baz">${eqs.length} eq.</span>
+          ${eqVenc.length?`<span class="bx bro">⚠ ${eqVenc.length} venc.</span>`:''}
+          ${eqProx.length?`<span class="bx bna">⏰ ${eqProx.length} próx.</span>`:''}
+        </div>
+      </div>
+
+      <!-- COMPRAS -->
+      <div onclick="showHomeCompras()" style="
+        background:var(--s1);border:1.5px solid ${hasCompAlert?'var(--roba)':'var(--brd)'};
+        border-top:4px solid ${ocSinOfert.length?'var(--ro)':compActivas.length?'#7c3aed':'var(--ve2)'};
+        border-radius:var(--r);padding:.9rem .75rem;cursor:pointer;box-shadow:var(--sh)">
+        <div style="font-size:1.6rem;margin-bottom:.3rem">🛒</div>
+        <div style="font-size:.78rem;font-weight:700;margin-bottom:.35rem">Compras / OC</div>
+        <div style="display:flex;gap:.25rem;flex-wrap:wrap">
+          <span class="bx baz">${compActivas.length} activas</span>
+          ${ocSinOfert.length?`<span class="bx bro">🚨 ${ocSinOfert.length} sin ofert.</span>`:''}
+          ${ocPendiente.length?`<span class="bx bna">${ocPendiente.length} pend.</span>`:''}
+        </div>
+      </div>
+
+      <!-- EXPEDIENTES -->
+      <div onclick="showHomeExpedientes()" style="
+        background:var(--s1);border:1.5px solid ${hasExpAlert?'var(--naba)':'var(--brd)'};
+        border-top:4px solid ${ric58Env.length?'var(--pu)':expAbiertos.length?'var(--az)':'var(--ve2)'};
+        border-radius:var(--r);padding:.9rem .75rem;cursor:pointer;box-shadow:var(--sh)">
+        <div style="font-size:1.6rem;margin-bottom:.3rem">📁</div>
+        <div style="font-size:.78rem;font-weight:700;margin-bottom:.35rem">Expedientes</div>
+        <div style="display:flex;gap:.25rem;flex-wrap:wrap">
+          <span class="bx baz">${expAbiertos.length} abiertos</span>
+          ${ric58Env.length?`<span class="bx bpu">${ric58Env.length} RIC-58</span>`:''}
+        </div>
+      </div>
+    `;
+  }catch(e){if(hc)hc.innerHTML=`<div style="grid-column:1/-1"><div class="emp">Error: ${e.message}</div></div>`}
+}
+
+// ── Vista Tareas global desde Home ──
+function showHomeTareas(){showGlobalTareas();}
+
+// ── Vista Compras global desde Home ──
+async function showHomeCompras(){
+  showView('globalView');
+  curSrv=null;curSubSrv=null;curMod=null;
+  const el=g('globalContent');
+  el.innerHTML='<div style="color:var(--dim);font-size:.78rem;padding:.4rem">Cargando...</div>';
+  try{
+    const compras=await getAll('compras');
+    const urgentes=compras.filter(c=>c.tipo==='Orden de Provisión (OC)'&&c.estadoOC==='Sin Oferentes');
+    const activas=compras.filter(c=>!urgentes.includes(c)&&c.estadoOC!=='Entregado'&&c.estadoOC!=='Baja');
+    const archivadas=compras.filter(c=>c.estadoOC==='Entregado'||c.estadoOC==='Baja');
+    // Agrupar activas por servicio
+    const byServ={};
+    [...urgentes,...activas].forEach(c=>{
+      const k=c.servicio||'General';
+      if(!byServ[k])byServ[k]=[];
+      byServ[k].push(c);
+    });
+    let html=`
+      <button class="volver" onclick="goHome()">← Inicio</button>
+      <div class="sectit"><span>🛒</span> Compras / OC · Global</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin-bottom:.7rem">
+        <div style="background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
+          <div style="font-size:1.1rem">🛒</div>
+          <div style="font-size:1rem;font-weight:700;color:var(--az)">${compras.length}</div>
+          <div style="font-size:.6rem;color:var(--dim)">Total</div>
+        </div>
+        <div style="background:${urgentes.length?'var(--roli)':'var(--s1)'};border:1.5px solid ${urgentes.length?'var(--roba)':'var(--brd)'};border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
+          <div style="font-size:1.1rem">🚨</div>
+          <div style="font-size:1rem;font-weight:700;color:${urgentes.length?'var(--ro)':'var(--ve2)'}">${urgentes.length}</div>
+          <div style="font-size:.6rem;color:var(--dim)">Sin oferentes</div>
+        </div>
+        <div style="background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
+          <div style="font-size:1.1rem">✅</div>
+          <div style="font-size:1rem;font-weight:700;color:var(--ve2)">${archivadas.length}</div>
+          <div style="font-size:.6rem;color:var(--dim)">Entregadas</div>
+        </div>
+      </div>`;
+    Object.keys(byServ).sort().forEach(srv=>{
+      const rows=byServ[srv];
+      const srvInfo=SRVS.find(s=>mSrv(s.id,srv));
+      html+=`<div class="stitle">${srvInfo?srvInfo.ico+' ':''} ${es(srv)} (${rows.length})</div>
+      <div class="tw" style="margin-bottom:.6rem"><table>
+        <thead><tr><th>Descripción</th><th>Tipo</th><th>Estado OC</th><th>N° OC</th><th>Fecha</th><th></th></tr></thead>
+        <tbody>${rows.map(c=>{
+          const pill_t=c.tipo==='Orden de Provisión (OC)'?`<span class="pill ppu">OC</span>`:`<span class="pill pgold">Compra</span>`;
+          const pill_e=c.estadoOC?`<span class="pill ${c.estadoOC==='Sin Oferentes'?'pal':c.estadoOC==='Pendiente'?'pwn':'pdim'}">${es(c.estadoOC)}</span>`:'—';
+          return`<tr${c.estadoOC==='Sin Oferentes'?' style="background:var(--roli)"':''}>
+            <td style="font-size:.72rem;max-width:140px"><b>${es(c.descripcion)}</b>${c.subServicio?`<br><span style="color:var(--dim);font-size:.62rem">${es(c.subServicio)}</span>`:''}</td>
+            <td>${pill_t}</td><td>${pill_e}</td>
+            <td style="font-size:.63rem">${es(c.nroc||'—')}</td>
+            <td style="font-size:.62rem">${c.fecha||'—'}</td>
+            <td><div class="arow">
+              <button class="ab" onclick="curSrv=null;editR('compra',${c.id})">✏️</button>
+              <button class="ab" onclick="delR('compra',${c.id})">🗑</button>
+            </div></td>
+          </tr>`;
+        }).join('')}</tbody></table></div>`;
+    });
+    if(!compras.length)html+=`<div class="emp"><div class="ei">🛒</div>Sin compras registradas.</div>`;
+    if(archivadas.length){
+      html+=`<div class="stitle" style="color:var(--dim)">✅ Entregadas / Archivadas (${archivadas.length})</div>
+      <div class="tw" style="opacity:.65"><table>
+        <thead><tr><th>Descripción</th><th>Servicio</th><th>N° OC</th><th>Fecha</th></tr></thead>
+        <tbody>${archivadas.map(c=>`<tr>
+          <td style="font-size:.72rem;text-decoration:line-through;color:var(--dim)">${es(c.descripcion)}</td>
+          <td style="font-size:.63rem">${es(c.servicio||'—')}</td>
+          <td style="font-size:.63rem">${es(c.nroc||'—')}</td>
+          <td style="font-size:.62rem">${c.fecha||'—'}</td>
+        </tr>`).join('')}</tbody></table></div>`;
+    }
+    el.innerHTML=html;
+  }catch(e){el.innerHTML=`<div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div>`}
+}
+
+// ── Vista Expedientes global desde Home ──
+async function showHomeExpedientes(){
+  showView('globalView');
+  curSrv=null;curSubSrv=null;curMod=null;
+  const el=g('globalContent');
+  el.innerHTML='<div style="color:var(--dim);font-size:.78rem;padding:.4rem">Cargando...</div>';
+  try{
+    const [exps,rics]=await Promise.all([getAll('expedientes'),getAll('ric58')]);
+    const expAbiertos=exps.filter(e=>e.estado!=='Archivado'&&e.estado!=='Rechazado');
+    const expCerrados=exps.filter(e=>e.estado==='Archivado'||e.estado==='Rechazado');
+    const ric58Env=rics.filter(r=>r.estado==='Enviado');
+    const ric58Ot=rics.filter(r=>r.estado!=='Enviado');
+    // Agrupar expedientes por servicio
+    const byServ={};
+    expAbiertos.forEach(e=>{
+      const k=e.servicio||'General';
+      if(!byServ[k])byServ[k]=[];
+      byServ[k].push(e);
+    });
+    let html=`
+      <button class="volver" onclick="goHome()">← Inicio</button>
+      <div class="sectit"><span>📁</span> Expedientes & RIC-58 · Global</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin-bottom:.7rem">
+        <div style="background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
+          <div style="font-size:1.1rem">📁</div>
+          <div style="font-size:1rem;font-weight:700;color:var(--az)">${expAbiertos.length}</div>
+          <div style="font-size:.6rem;color:var(--dim)">Exp. abiertos</div>
+        </div>
+        <div style="background:${ric58Env.length?'#f3e5ff':'var(--s1)'};border:1.5px solid ${ric58Env.length?'#d7b3f8':'var(--brd)'};border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
+          <div style="font-size:1.1rem">📋</div>
+          <div style="font-size:1rem;font-weight:700;color:var(--pu)">${ric58Env.length}</div>
+          <div style="font-size:.6rem;color:var(--dim)">RIC-58 env.</div>
+        </div>
+        <div style="background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
+          <div style="font-size:1.1rem">✅</div>
+          <div style="font-size:1rem;font-weight:700;color:var(--ve2)">${expCerrados.length}</div>
+          <div style="font-size:.6rem;color:var(--dim)">Cerrados</div>
+        </div>
+      </div>`;
+    // RIC-58 enviados primero
+    if(ric58Env.length){
+      html+=`<div class="stitle" style="color:var(--pu)">📋 RIC-58 Enviados (${ric58Env.length})</div>
+      <div class="tw" style="margin-bottom:.65rem"><table>
+        <thead><tr><th>N°</th><th>Descripción</th><th>Servicio</th><th>Fecha</th><th>Estado</th></tr></thead>
+        <tbody>${ric58Env.map(r=>`<tr>
+          <td><b style="font-size:.72rem">${es(r.numero)}</b></td>
+          <td style="font-size:.71rem;max-width:130px">${es(r.descripcion)}</td>
+          <td style="font-size:.63rem">${es(r.servicio||'—')}</td>
+          <td style="font-size:.62rem">${r.fechaEnvio||'—'}</td>
+          <td><span class="pill ppu">Enviado</span></td>
+        </tr>`).join('')}</tbody></table></div>`;
+    }
+    // Expedientes por servicio
+    Object.keys(byServ).sort().forEach(srv=>{
+      const rows=byServ[srv];
+      const srvInfo=SRVS.find(s=>mSrv(s.id,srv));
+      html+=`<div class="stitle">${srvInfo?srvInfo.ico+' ':''} ${es(srv)} (${rows.length})</div>
+      <div class="tw" style="margin-bottom:.6rem"><table>
+        <thead><tr><th>N° Exp.</th><th>Descripción</th><th>Estado</th><th>Inicio</th></tr></thead>
+        <tbody>${rows.map(e=>`<tr>
+          <td><b style="font-size:.72rem">${es(e.numero)}</b></td>
+          <td style="font-size:.71rem;max-width:140px">${es(e.descripcion)}</td>
+          <td>${pill(e.estado,'ex')}</td>
+          <td style="font-size:.62rem">${e.fechaInicio||'—'}</td>
+        </tr>`).join('')}</tbody></table></div>`;
+    });
+    if(!exps.length&&!rics.length)html+=`<div class="emp"><div class="ei">📁</div>Sin expedientes registrados.</div>`;
+    el.innerHTML=html;
+  }catch(e){el.innerHTML=`<div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div>`}
+}
+
+// ════════════════════════════════════
 // DASHBOARD
 // ════════════════════════════════════
 async function renderDash(){
@@ -609,8 +858,8 @@ async function renderDash(){
       </div>`;
     });
     if(!eqs.length&&!exs.length)html+=`<div style="grid-column:1/-1"><div class="emp"><div class="ei">📂</div>Sin datos.<br>Ir a <b>⚙️ Admin</b> para importar los Excel.</div></div>`;
-    g('dashView').innerHTML=html;
-  }catch(e){g('dashView').innerHTML=`<div style="grid-column:1/-1"><div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div></div>`}
+    const dg=g('dashGrid');if(dg)dg.innerHTML=html;else{const dv=g('dashView');if(dv)dv.innerHTML=html;}
+  }catch(e){const dg=g('dashGrid')||g('dashView');if(dg)dg.innerHTML=`<div style="grid-column:1/-1"><div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div></div>`}
 }
 
 // ════════════════════════════════════
@@ -1850,19 +2099,24 @@ async function checkAlerts(){
 // NAVIGATION
 // ════════════════════════════════════
 function showView(id){
-  ['dashView','serviceView','modView','stockPanel','adminPanel','globalView'].forEach(v=>{
+  ['homeView','dashView','serviceView','modView','stockPanel','adminPanel','globalView'].forEach(v=>{
     const el=g(v);
     if(el)el.style.display='none';
   });
   const el=g(id);
   if(el){
-    el.style.display=id==='dashView'?'grid':'block';
+    el.style.display='block';
     if(id==='modView')el.style.display='block';
   }
   updateBreadcrumb();
 }
 
 function goHome(){
+  curSrv=null;curSubSrv=null;curMod=null;
+  showView('homeView');
+  renderHome();checkAlerts();
+}
+function goServicios(){
   curSrv=null;curSubSrv=null;curMod=null;
   showView('dashView');
   renderDash();checkAlerts();
