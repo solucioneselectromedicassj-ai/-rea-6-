@@ -278,8 +278,7 @@ td{padding:.4rem .52rem;vertical-align:middle}
     <div class="hlogo">A6</div>
     <div class="htit">ÁREA 6<small>Ing. Clínica · Rawson</small></div>
     <div class="hsp"></div>
-    <button class="hib" onclick="showGlobalTareas()" title="Ver todas las tareas">✅</button>
-    <button class="hib" onclick="showStock()">📦</button>
+    <button class="hib" onclick="goHome()" title="Tablero">🏠</button>
     <button class="hib" onclick="showAdmin()">⚙️</button>
     <button class="hib" onclick="doLogout()" style="opacity:.85">⏏</button>
   </div>
@@ -589,8 +588,8 @@ async function renderHome(){
   const hc=g('homeCards');
   if(!hc)return;
   try{
-    const [tareas,compras,rics,exps,eqs,actas]=await Promise.all([
-      getAll('tareas'),getAll('compras'),getAll('ric58'),getAll('expedientes'),getAll('equipos'),getAll('actas')
+    const [tareas,compras,rics,exps,eqs,actas,stocks]=await Promise.all([
+      getAll('tareas'),getAll('compras'),getAll('ric58'),getAll('expedientes'),getAll('equipos'),getAll('actas'),getAll('stock')
     ]);
     const hoy=today();
     // ── Tareas ──
@@ -616,6 +615,9 @@ async function renderHome(){
     const actAbiertas=actas.filter(a=>a.estado!=='Cerrada'&&a.estado!=='Cancelada');
     const actVencidas=actAbiertas.filter(a=>{const d=diff(toD(a.fecha),hoy);return d!==null&&d>30;});
     const hasActaAlert=actVencidas.length>0;
+    // ── Stock ──
+    const stkCritico=stocks.filter(s=>Number(s.stock)<=0);
+    const stkBajo=stocks.filter(s=>Number(s.stock)>0&&Number(s.stock)<=2);
 
     hc.innerHTML=`
       <!-- TAREAS -->
@@ -683,6 +685,20 @@ async function renderHome(){
         <div style="display:flex;gap:.25rem;flex-wrap:wrap">
           <span class="bx baz">${actAbiertas.length} abiertas</span>
           ${actVencidas.length?`<span class="bx bna">⏰ ${actVencidas.length} +30d</span>`:''}
+        </div>
+      </div>
+
+      <!-- STOCK -->
+      <div onclick="showHomeStock()" style="
+        background:var(--s1);border:1.5px solid ${stkCritico.length?'var(--roba)':stkBajo.length?'var(--naba)':'var(--brd)'};
+        border-top:4px solid ${stkCritico.length?'var(--ro)':stkBajo.length?'var(--na)':'var(--ve2)'};
+        border-radius:var(--r);padding:.9rem .75rem;cursor:pointer;box-shadow:var(--sh)">
+        <div style="font-size:1.6rem;margin-bottom:.3rem">📦</div>
+        <div style="font-size:.78rem;font-weight:700;margin-bottom:.35rem">Stock</div>
+        <div style="display:flex;gap:.25rem;flex-wrap:wrap">
+          <span class="bx baz">${stocks.length} ítems</span>
+          ${stkCritico.length?`<span class="bx bro">⚠ ${stkCritico.length} sin stock</span>`:''}
+          ${stkBajo.length?`<span class="bx bna">↓ ${stkBajo.length} bajo</span>`:''}
         </div>
       </div>
     `;
@@ -823,19 +839,51 @@ async function showHomeExpedientes(){
     Object.keys(byServ).sort().forEach(srv=>{
       const rows=byServ[srv];
       const srvInfo=SRVS.find(s=>mSrv(s.id,srv));
-      html+=`<div class="stitle">${srvInfo?srvInfo.ico+' ':''} ${es(srv)} (${rows.length})</div>
-      <div class="tw" style="margin-bottom:.6rem"><table>
-        <thead><tr><th>N° Exp.</th><th>Descripción</th><th>Estado</th><th>Inicio</th></tr></thead>
-        <tbody>${rows.map(e=>`<tr>
-          <td><b style="font-size:.72rem">${es(e.numero)}</b></td>
-          <td style="font-size:.71rem;max-width:140px">${es(e.descripcion)}</td>
-          <td>${pill(e.estado,'ex')}</td>
-          <td style="font-size:.62rem">${e.fechaInicio||'—'}</td>
-        </tr>`).join('')}</tbody></table></div>`;
+      html+=`<div class="stitle">${srvInfo?srvInfo.ico+' ':''} ${es(srv)} (${rows.length})</div>`;
+      rows.forEach(e=>{
+        const fi=toD(e.fechaInicio),d=diff(fi,hoy);
+        const stColor=e.estado==='Aprobado'?'var(--ve2)':e.estado==='En Trámite'?'var(--az)':'var(--na)';
+        html+=`<div style="background:var(--s1);border:1.5px solid var(--brd);border-left:4px solid ${stColor};border-radius:10px;padding:.6rem .7rem;margin-bottom:.32rem;box-shadow:var(--sh)">
+          <div style="display:flex;align-items:flex-start;gap:.45rem">
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;gap:.25rem;flex-wrap:wrap;align-items:center;margin-bottom:.18rem">
+                <span style="font-size:.73rem;font-weight:700;color:var(--az)">Exp. ${es(e.numero)}</span>
+                ${pill(e.estado,'ex')}
+              </div>
+              <div style="font-size:.71rem;line-height:1.35">${es(e.descripcion)}</div>
+              <div style="font-size:.61rem;color:var(--dim);margin-top:.12rem">Inicio: ${fd(fi)||'—'}${d!==null?` · <b style="color:var(--cy)">${d}d</b>`:''}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:.2rem;flex-shrink:0">
+              <button class="ab" onclick="cambiarEstadoExG(${e.id})" style="background:var(--az3);color:var(--az);border-color:var(--az)" title="Cambiar estado">≡</button>
+              <button class="ab" onclick="curSrv=null;editR('expediente',${e.id})">✏️</button>
+              <button class="ab" onclick="archivarExG(${e.id})" title="Archivar">🗃</button>
+            </div>
+          </div>
+        </div>`;
+      });
     });
     if(!exps.length&&!rics.length)html+=`<div class="emp"><div class="ei">📁</div>Sin expedientes registrados.</div>`;
     el.innerHTML=html;
   }catch(e){el.innerHTML=`<div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div>`}
+}
+
+// ── Funciones de expedientes desde vista global ──
+async function cambiarEstadoExG(id){
+  const all=await getAll('expedientes');
+  const e=all.find(x=>x.id===id);if(!e)return;
+  const estados=EST_EX.filter(s=>s!=='Archivado'&&s!=='Rechazado');
+  const idx=estados.indexOf(e.estado||'Iniciado');
+  const next=estados[(idx+1)%estados.length];
+  await put('expedientes',{...e,estado:next,mod:new Date().toLocaleDateString('es-AR')});
+  toast('Estado → '+next,'ok');await showHomeExpedientes();
+}
+async function archivarExG(id){
+  cfm2('¿Archivar este expediente?',async()=>{
+    const all=await getAll('expedientes');
+    const e=all.find(x=>x.id===id);if(!e)return;
+    await put('expedientes',{...e,estado:'Archivado',mod:new Date().toLocaleDateString('es-AR')});
+    toast('Expediente archivado','ok');await showHomeExpedientes();
+  });
 }
 
 // ── Vista Actas global desde Home ──
@@ -1553,58 +1601,74 @@ async function modRIC58(tc){
   const all=await getAll('ric58');
   const rows=all.filter(e=>mSrv(e.servicio,curSrv)&&matchSub(e));
   const hoy=today();
-  const env=rows.filter(r=>r.estado==='Enviado'||!r.estado);
-  const neg=rows.filter(r=>r.estado==='Negado');
-  const cvt=rows.filter(r=>r.estado==='Convertido a Expediente');
-
-  const ric58Row=(r)=>{
+  const activos=rows.filter(r=>r.estado!=='Convertido a Expediente'&&r.estado!=='Archivado');
+  const archivados=rows.filter(r=>r.estado==='Convertido a Expediente'||r.estado==='Archivado');
+  const renderRicCard=(r)=>{
     const fi=toD(r.fechaEnvio),d=diff(fi,hoy);
-    const estPill=r.estado==='Enviado'?`<span class="pill ppu">📤 Enviado</span>`:r.estado==='Negado'?`<span class="pill pal">✕ Negado</span>`:`<span class="pill pok">✓ Convertido</span>`;
-    return`<tr>
-      <td><b>${es(r.numero||'—')}</b></td>
-      <td style="max-width:130px;font-size:.68rem">${es(r.descripcion)}</td>
-      <td style="font-size:.63rem">${fd(fi)}</td>
-      <td><span class="dc" style="background:#e0f7fa;color:var(--cy);border:1px solid #b2ebf2">${d!==null?d+'d':'—'}</span></td>
-      <td>${estPill}</td>
-      <td><div class="arow">
-        ${r.estado==='Enviado'?`<button class="ab cvt" onclick="convertirRic58(${r.id})">📁 Convertir</button>`:''}
-        <button class="ab" onclick="editR('ric58',${r.id})">✏️</button>
-        <button class="ab" onclick="delR('ric58',${r.id})">🗑</button>
-      </div></td>
-    </tr>`;
+    const esNeg=r.estado==='Negado';
+    const brdColor=esNeg?'var(--ro)':r.estado==='Enviado'||!r.estado?'var(--pu)':'var(--ve2)';
+    const estPill=(!r.estado||r.estado==='Enviado')?`<span class="pill ppu">📤 Enviado</span>`:esNeg?`<span class="pill pal">✕ Negado</span>`:`<span class="pill pok">✓ Convertido</span>`;
+    return`<div style="background:var(--s1);border:1.5px solid var(--brd);border-left:4px solid ${brdColor};border-radius:10px;padding:.65rem .75rem;margin-bottom:.38rem;box-shadow:var(--sh)">
+      <div style="display:flex;align-items:flex-start;gap:.5rem">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;gap:.28rem;flex-wrap:wrap;align-items:center;margin-bottom:.22rem">
+            <span style="font-size:.75rem;font-weight:700;color:var(--pu)">RIC-58 ${es(r.numero||'—')}</span>
+            ${estPill}
+          </div>
+          <div style="font-size:.73rem;line-height:1.4;margin-bottom:.18rem">${es(r.descripcion)}</div>
+          <div style="font-size:.62rem;color:var(--dim)">Envío: ${fd(fi)||'—'}${d!==null?` · <b style="color:var(--cy)">${d}d</b>`:''}</div>
+          ${r.observaciones?`<div style="font-size:.61rem;color:var(--dim);margin-top:.1rem">${es(r.observaciones)}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.22rem;flex-shrink:0">
+          ${(!r.estado||r.estado==='Enviado')?`<button class="ab cvt" onclick="convertirRic58(${r.id})" title="Aprobado → Convertir a Expediente">📁</button>`:''}
+          ${(!r.estado||r.estado==='Enviado')?`<button class="ab" style="background:var(--roli);color:var(--ro);border-color:var(--roba)" onclick="negarRic58(${r.id})" title="Negado">✕</button>`:''}
+          <button class="ab" onclick="editR('ric58',${r.id})">✏️</button>
+          <button class="ab" onclick="archivarRic58(${r.id})" title="Archivar">🗃</button>
+          <button class="ab" onclick="delR('ric58',${r.id})">🗑</button>
+        </div>
+      </div>
+    </div>`;
   };
-
   tc.innerHTML=`
     <div class="tbar">
       <button class="btn baz2" onclick="openForm('ric58')">+ Nuevo RIC-58</button>
       <div class="sp"></div>
-      <span class="bx bpu">${env.length} enviados</span>
-      ${neg.length?`<span class="bx bro">${neg.length} negados</span>`:''}
+      <span class="bx bpu">${activos.filter(r=>!r.estado||r.estado==='Enviado').length} enviados</span>
+      ${activos.filter(r=>r.estado==='Negado').length?`<span class="bx bro">${activos.filter(r=>r.estado==='Negado').length} negados</span>`:''}
     </div>
-    ${!rows.length?`<div class="emp"><div class="ei">📋</div>Sin RIC-58 registrados.</div>`:`
-    ${env.length?`<div class="stitle">📤 Enviados (${env.length})</div>
-      <div class="tw" style="margin-bottom:.55rem"><table>
-      <thead><tr><th>N° RIC-58</th><th>Descripción</th><th>Envío</th><th>Días</th><th>Estado</th><th></th></tr></thead>
-      <tbody>${env.map(ric58Row).join('')}</tbody></table></div>`:''}
-    ${neg.length?`<div class="stitle">✕ Negados (${neg.length})</div>
-      <div class="tw" style="margin-bottom:.55rem"><table>
-      <thead><tr><th>N° RIC-58</th><th>Descripción</th><th>Envío</th><th>Días</th><th>Estado</th><th></th></tr></thead>
-      <tbody>${neg.map(ric58Row).join('')}</tbody></table></div>`:''}
-    ${cvt.length?`<div class="stitle">✅ Convertidos a Expediente (${cvt.length})</div>
-      <div class="tw"><table>
-      <thead><tr><th>N° RIC-58</th><th>Descripción</th><th>Envío</th><th>Exp. Generado</th><th>Estado</th><th></th></tr></thead>
-      <tbody>${cvt.map(r=>`<tr>
-        <td><b>${es(r.numero)}</b></td>
-        <td style="font-size:.68rem;max-width:120px">${es(r.descripcion)}</td>
-        <td style="font-size:.63rem">${fd(toD(r.fechaEnvio))}</td>
-        <td><b style="color:var(--ve2)">${es(r.expGenerado||'—')}</b></td>
-        <td><span class="pill pok">✓ Convertido</span></td>
-        <td><div class="arow"><button class="ab" onclick="delR('ric58',${r.id})">🗑</button></div></td>
-      </tr>`).join('')}</tbody></table></div>`:''}
-    `}
-    <div class="infobx">💡 Al convertir un RIC-58 se crea automáticamente el expediente y se archiva el RIC-58.</div>`;
+    ${!rows.length?`<div class="emp"><div class="ei">📋</div>Sin RIC-58 registrados.</div>`:''}
+    ${activos.map(renderRicCard).join('')}
+    ${archivados.length?`<details style="margin-top:.35rem"><summary style="font-size:.72rem;font-weight:700;color:var(--dim);cursor:pointer;padding:.3rem 0">📁 Archivados / Convertidos (${archivados.length})</summary>
+      <div style="margin-top:.35rem;opacity:.7">${archivados.map(r=>`<div style="background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.5rem .65rem;margin-bottom:.28rem;display:flex;align-items:center;gap:.5rem">
+        <div style="flex:1;min-width:0">
+          <b style="font-size:.7rem;color:var(--dim)">RIC-58 ${es(r.numero)}</b>
+          ${r.estado==='Convertido a Expediente'?`<span class="pill pok" style="margin-left:.2rem;font-size:.58rem">📁 Exp. ${es(r.expGenerado||'—')}</span>`:`<span class="pill pdim" style="margin-left:.2rem;font-size:.58rem">Archivado</span>`}
+          <div style="font-size:.62rem;color:var(--dim);margin-top:.1rem">${es(r.descripcion)}</div>
+        </div>
+        <div style="display:flex;gap:.2rem">
+          <button class="ab" onclick="reabrirRic58(${r.id})" title="Reabrir">↩</button>
+          <button class="ab" onclick="delR('ric58',${r.id})">🗑</button>
+        </div>
+      </div>`).join('')}</div></details>`:''}
+    <div class="infobx" style="margin-top:.4rem">💡 Aprobado → 📁 Convertir a Expediente · Negado → Archivar.</div>`;
 }
-
+async function negarRic58(id){
+  const all=await getAll('ric58');const r=all.find(x=>x.id===id);if(!r)return;
+  await put('ric58',{...r,estado:'Negado',mod:new Date().toLocaleDateString('es-AR')});
+  toast('RIC-58 marcado Negado','ok');await refreshView();
+}
+async function archivarRic58(id){
+  cfm2('¿Archivar este RIC-58?',async()=>{
+    const all=await getAll('ric58');const r=all.find(x=>x.id===id);if(!r)return;
+    await put('ric58',{...r,estado:'Archivado',mod:new Date().toLocaleDateString('es-AR')});
+    toast('RIC-58 archivado','ok');await refreshView();
+  });
+}
+async function reabrirRic58(id){
+  const all=await getAll('ric58');const r=all.find(x=>x.id===id);if(!r)return;
+  await put('ric58',{...r,estado:'Enviado',mod:new Date().toLocaleDateString('es-AR')});
+  toast('RIC-58 reabierto','ok');await refreshView();
+}
 // RIC-58 Conversion flow
 async function convertirRic58(id){
   const all=await getAll('ric58');
@@ -1897,13 +1961,45 @@ function ft(id,v){const tbl=document.getElementById(id);if(!tbl)return;const lv=
 // ════════════════════════════════════
 // STOCK
 // ════════════════════════════════════
+async function showHomeStock(){showView('stockPanel');await renderStock('')}
 async function showStock(){showView('stockPanel');await renderStock('')}
 async function renderStock(f=''){
   const all=await getAll('stock');
   const rows=f?all.filter(s=>(s.descrip||'').toLowerCase().includes(f.toLowerCase())):all;
   const el=g('stkCont');
-  if(!rows.length){el.innerHTML=`<div class="emp"><div class="ei">📦</div>${f?'Sin coincidencias':'Sin stock. Importá <b>Stock_actual.xlsx</b>'}</div>`;return}
-  el.innerHTML=`<div class="sg">${rows.map(s=>{const c=Number(s.stock)||0,cls=c<=0?'zr':c<=2?'lw':'ok-s';return`<div class="si ${cls}"><h4>${es(s.descrip)}</h4><div class="sn2"><span>In: <b>${s.cantIn||0}</b></span><span>Out: <b>${s.cantOut||0}</b></span><span>Stk: <b style="color:${c<=0?'var(--ro)':c<=2?'var(--na)':'var(--ve2)'}">${c}</b></span></div></div>`}).join('')}</div>`;
+  if(!rows.length){el.innerHTML=`<div class="emp"><div class="ei">📦</div>${f?'Sin coincidencias':'Sin stock. Importá <b>Stock_actual.xlsx</b> o agregá manualmente.'}</div>`;return}
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:.38rem">
+    ${rows.map(s=>{
+      const c=Number(s.stock)||0;
+      const cls=c<=0?'zr':c<=2?'lw':'ok-s';
+      const brdColor=c<=0?'var(--ro)':c<=2?'var(--na)':'var(--ve2)';
+      return`<div class="si ${cls}" style="border-left:4px solid ${brdColor};padding:.65rem .75rem;display:flex;align-items:center;gap:.55rem">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.76rem;font-weight:700;line-height:1.3;margin-bottom:.2rem">${es(s.descrip)}</div>
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <span style="font-size:1rem;font-weight:800;color:${brdColor}">${c}</span>
+            <span style="font-size:.62rem;color:var(--dim)">en stock</span>
+            <span style="font-size:.62rem;color:var(--dim)">· In: ${s.cantIn||0} · Out: ${s.cantOut||0}</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.2rem;flex-shrink:0">
+          <button onclick="ajustarStock(${s.id},1)" style="background:var(--veli);color:var(--ve2);border:1.5px solid var(--veba);border-radius:7px;padding:.28rem .55rem;font-size:.85rem;font-weight:700;cursor:pointer">+</button>
+          <button onclick="ajustarStock(${s.id},-1)" style="background:var(--roli);color:var(--ro);border:1.5px solid var(--roba);border-radius:7px;padding:.28rem .55rem;font-size:.85rem;font-weight:700;cursor:pointer">−</button>
+          <button onclick="editR('stock',${s.id})" style="background:var(--s2);border:1.5px solid var(--brd);border-radius:7px;padding:.28rem .4rem;font-size:.75rem;cursor:pointer">✏️</button>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+async function ajustarStock(id,delta){
+  const all=await getAll('stock');
+  const s=all.find(x=>x.id===id);if(!s)return;
+  const nuevo=Math.max(0,Number(s.stock||0)+delta);
+  const campo=delta>0?'cantIn':'cantOut';
+  await put('stock',{...s,stock:nuevo,[campo]:Number(s[campo]||0)+Math.abs(delta)});
+  await renderStock(g('eqBuscador')?.value||'');
+  // Actualizar home si está visible
+  if(g('homeView')&&g('homeView').style.display!=='none')renderHome();
 }
 
 // ════════════════════════════════════
