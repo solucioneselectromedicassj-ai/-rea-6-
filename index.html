@@ -785,6 +785,7 @@ async function showHomeExpedientes(){
   el.innerHTML='<div style="color:var(--dim);font-size:.78rem;padding:.4rem">Cargando...</div>';
   try{
     const [exps,rics]=await Promise.all([getAll('expedientes'),getAll('ric58')]);
+    const hoy=today();
     const expAbiertos=exps.filter(e=>e.estado!=='Archivado'&&e.estado!=='Rechazado');
     const expCerrados=exps.filter(e=>e.estado==='Archivado'||e.estado==='Rechazado');
     const ric58Env=rics.filter(r=>r.estado==='Enviado');
@@ -902,57 +903,88 @@ async function showHomeActas(){
     let html=`
       <button class="volver" onclick="goHome()">← Inicio</button>
       <div class="sectit"><span>📄</span> Actas de Reparación · Global</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin-bottom:.7rem">
-        <div style="background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
-          <div style="font-size:1.1rem">📄</div>
-          <div style="font-size:1rem;font-weight:700;color:var(--az)">${abiertas.length}</div>
-          <div style="font-size:.6rem;color:var(--dim)">Abiertas</div>
-        </div>
-        <div style="background:${vencidas.length?'var(--nali)':'var(--s1)'};border:1.5px solid ${vencidas.length?'var(--naba)':'var(--brd)'};border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
-          <div style="font-size:1.1rem">⏰</div>
-          <div style="font-size:1rem;font-weight:700;color:${vencidas.length?'var(--na)':'var(--ve2)'}">${vencidas.length}</div>
-          <div style="font-size:.6rem;color:var(--dim)">+30 días</div>
-        </div>
-        <div style="background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
-          <div style="font-size:1.1rem">✅</div>
-          <div style="font-size:1rem;font-weight:700;color:var(--ve2)">${cerradas.length}</div>
-          <div style="font-size:.6rem;color:var(--dim)">Cerradas</div>
-        </div>
+      <div class="tbar" style="margin-bottom:.5rem">
+        <button class="btn baz2" onclick="openActaGlobal()">+ Nueva Acta</button>
+        <div class="sp"></div>
+        <span class="bx baz">${abiertas.length} abiertas</span>
+        ${vencidas.length?`<span class="bx bna">⏰ ${vencidas.length} +30d</span>`:''}
       </div>`;
     if(vencidas.length){
-      html+=`<div class="warnbx" style="margin-bottom:.55rem">⏰ <b>${vencidas.length} acta${vencidas.length>1?'s':''}</b> con más de 30 días sin retorno del equipo. Contactar al proveedor.</div>`;
+      html+=`<div class="warnbx" style="margin-bottom:.5rem">⏰ <b>${vencidas.length} acta${vencidas.length>1?'s':''}</b> con más de 30 días sin retorno. Contactar al proveedor.</div>`;
     }
-    Object.keys(byServ).sort().forEach(srv=>{
-      const rows=byServ[srv];
-      const srvInfo=SRVS.find(s=>mSrv(s.id,srv));
-      html+=`<div class="stitle">${srvInfo?srvInfo.ico+' ':''} ${es(srv)} (${rows.length})</div>`;
-      rows.forEach(a=>{
-        const fi=toD(a.fecha),d=diff(fi,hoy);
-        const alerta=d!==null&&d>30;
-        const stColor=a.estado==='Equipo regresó'?'var(--ve2)':a.estado==='En reparación'||a.estado==='Esperando repuestos'?'var(--na)':a.estado==='Equipo enviado'?'var(--az)':'var(--dim)';
-        html+=`<div style="background:var(--s1);border:1.5px solid ${alerta?'var(--naba)':'var(--brd)'};border-left:4px solid ${stColor};
-          border-radius:10px;padding:.6rem .7rem;margin-bottom:.35rem;box-shadow:var(--sh)">
-          ${alerta?`<div style="font-size:.64rem;font-weight:700;color:var(--na);margin-bottom:.15rem">⏰ ${d}d — verificar con proveedor</div>`:''}
-          <div style="display:flex;align-items:center;gap:.5rem">
-            <div style="flex:1">
-              <b style="font-size:.74rem">${es(a.equipo)}</b>
-              <span class="pill pin" style="margin-left:.3rem;background:${stColor+'22'};color:${stColor};border-color:${stColor};font-size:.58rem">${es(a.estado||'Abierta')}</span>
-              <div style="font-size:.62rem;color:var(--dim);margin-top:.12rem">
-                ${a.destino?`📦 ${es(a.destino)} · `:''}${a.fecha||'—'} · <b style="color:${alerta?'var(--na)':'var(--cy)'}">${d!==null?d+'d':''}</b>
-                ${a.subServicio?` · ${es(a.subServicio)}`:''}
-              </div>
-            </div>
-            <div style="display:flex;gap:.2rem">
-              <button class="ab" style="background:var(--veli);color:var(--ve2);border-color:var(--veba)" onclick="cerrarActaG(${a.id})" title="Cerrar">✔</button>
-              <button class="ab" onclick="curSrv=null;editR('acta',${a.id})">✏️</button>
-            </div>
-          </div>
-        </div>`;
-      });
+    // Todas las actas abiertas como cards con acciones completas
+    const todasAbiertas=[...abiertas].sort((a,b)=>{
+      const da=diff(toD(a.fecha),hoy)??0, db=diff(toD(b.fecha),hoy)??0;
+      return db-da; // más viejas primero
     });
-    if(!abiertas.length)html+=`<div class="emp"><div class="ei">📄</div>Sin actas abiertas.</div>`;
+    todasAbiertas.forEach(a=>{
+      const fi=toD(a.fecha),d=diff(fi,hoy);
+      const alerta=d!==null&&d>30;
+      const stColor=a.estado==='Equipo regresó'?'var(--ve2)':a.estado==='En reparación'||a.estado==='Esperando repuestos'?'var(--na)':a.estado==='Equipo enviado'?'var(--az)':'var(--dim)';
+      const srvInfo=SRVS.find(s=>mSrv(s.id,a.servicio));
+      const estados=EST_ACTA.filter(s=>s!=='Cerrada');
+      const idxEst=estados.indexOf(a.estado||'Abierta');
+      const nextEst=estados[(idxEst+1)%estados.length];
+      html+=`<div style="background:var(--s1);border:1.5px solid ${alerta?'var(--naba)':'var(--brd)'};border-left:4px solid ${stColor};
+        border-radius:10px;padding:.65rem .75rem;margin-bottom:.38rem;box-shadow:var(--sh)">
+        ${alerta?`<div style="font-size:.64rem;font-weight:700;color:var(--na);margin-bottom:.15rem">⏰ ${d}d sin retorno — contactar proveedor</div>`:''}
+        <div style="display:flex;align-items:flex-start;gap:.45rem">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.76rem;font-weight:700;margin-bottom:.16rem">${es(a.equipo)}</div>
+            <div style="display:flex;gap:.22rem;flex-wrap:wrap;margin-bottom:.18rem">
+              <span class="pill pin" style="background:${stColor}22;color:${stColor};border-color:${stColor}">${es(a.estado||'Abierta')}</span>
+              ${a.tipo?`<span class="pill pdim">${es(a.tipo)}</span>`:''}
+            </div>
+            <div style="font-size:.62rem;color:var(--dim)">
+              ${a.destino?`📦 ${es(a.destino)} · `:''}
+              ${srvInfo?srvInfo.ico+' '+srvInfo.lb+' · ':''}
+              <b style="color:${alerta?'var(--na)':'var(--cy)'}">${d!==null?d+'d':''}</b>
+              ${a.fechaCierre?` · Cerrada: ${a.fechaCierre}`:''}
+            </div>
+            ${a.observaciones?`<div style="font-size:.62rem;color:var(--dim);margin-top:.1rem">${es(a.observaciones)}</div>`:''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.22rem;flex-shrink:0">
+            <button class="ab" style="background:var(--az3);color:var(--az);border-color:var(--az);font-size:.7rem" onclick="avanzarEstadoActaG(${a.id},'${nextEst}')" title="→ ${nextEst}">≡</button>
+            <button class="ab" style="background:var(--veli);color:var(--ve2);border-color:var(--veba)" onclick="cerrarActaG(${a.id})" title="Cerrar acta">✔</button>
+            <button class="ab" onclick="curSrv=null;editR('acta',${a.id})">✏️</button>
+            <button class="ab" onclick="delR('acta',${a.id})">🗑</button>
+          </div>
+        </div>
+      </div>`;
+    });
+    if(!abiertas.length) html+=`<div class="emp"><div class="ei">📄</div>Sin actas abiertas.<br>Usá "+ Nueva Acta" para registrar un equipo enviado a reparación.</div>`;
+    // Cerradas colapsadas
+    if(cerradas.length){
+      html+=`<details style="margin-top:.4rem"><summary style="font-size:.72rem;font-weight:700;color:var(--dim);cursor:pointer;padding:.3rem 0">✅ Cerradas (${cerradas.length})</summary>
+      <div style="margin-top:.3rem">${cerradas.map(a=>`<div style="background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.48rem .65rem;margin-bottom:.28rem;display:flex;align-items:center;gap:.45rem;opacity:.7">
+        <div style="flex:1"><b style="font-size:.7rem">${es(a.equipo)}</b>
+          <span class="pill pok" style="margin-left:.2rem;font-size:.58rem">✓ Cerrada</span>
+          <div style="font-size:.61rem;color:var(--dim)">${a.destino?es(a.destino)+' · ':''}${a.fecha||'—'}${a.fechaCierre?' → '+a.fechaCierre:''}</div>
+        </div>
+        <button class="ab" onclick="reabrirActaG(${a.id})" title="Reabrir">↩</button>
+        <button class="ab" onclick="delR('acta',${a.id})">🗑</button>
+      </div>`).join('')}</div></details>`;
+    }
     el.innerHTML=html;
   }catch(e){el.innerHTML=`<div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div>`}
+}
+function openActaGlobal(){
+  // Abre el form de acta sin servicio preseleccionado, vuelve a showHomeActas al guardar
+  curSrv=null;curSubSrv=null;
+  _afterSaveCallback=()=>showHomeActas();
+  openForm('acta');
+}
+async function avanzarEstadoActaG(id,next){
+  const all=await getAll('actas');
+  const a=all.find(x=>x.id===id);if(!a)return;
+  await put('actas',{...a,estado:next});
+  toast('Estado → '+next,'ok');await showHomeActas();
+}
+async function reabrirActaG(id){
+  const all=await getAll('actas');
+  const a=all.find(x=>x.id===id);if(!a)return;
+  await put('actas',{...a,estado:'Equipo enviado'});
+  toast('Acta reabierta','ok');await showHomeActas();
 }
 async function cerrarActaG(id){
   const hoy=new Date().toLocaleDateString('es-AR');
