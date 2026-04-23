@@ -348,18 +348,12 @@ td{padding:.4rem .52rem;vertical-align:middle}
         <div class="sp"></div>
         <button class="btn baz2" style="font-size:.72rem" onclick="openForm('stock')">+ Agregar</button>
       </div>
-      <div class="tbar"><input class="fi" type="text" placeholder="Buscar repuesto o insumo..." oninput="renderStock(this.value)"></div>
+      <div class="tbar"><input id="stkBusc" class="fi" type="text" placeholder="🔍 Buscar repuesto o insumo..." oninput="renderStock(this.value)"></div>
       <div id="stkCont"></div>
     </div>
 
     <!-- GLOBAL TAREAS VIEW -->
     <div id="globalView" style="display:none">
-      <button class="volver" onclick="goHome()">← Volver</button>
-      <div class="sectit"><span>✅</span> Todas las Tareas · Registros globales</div>
-      <div class="tbar" style="margin-bottom:.55rem">
-        <button class="btn baz2" onclick="openGlobalForm('tarea')">✏️ Nueva Tarea</button>
-        <button class="btn" style="background:#f3e5ff;color:var(--pu);border:1.5px solid #d7b3f8" onclick="openGlobalForm('compra')">🛒 Nueva Compra</button>
-      </div>
       <div id="globalContent"></div>
     </div>
 
@@ -1997,7 +1991,7 @@ async function ajustarStock(id,delta){
   const nuevo=Math.max(0,Number(s.stock||0)+delta);
   const campo=delta>0?'cantIn':'cantOut';
   await put('stock',{...s,stock:nuevo,[campo]:Number(s[campo]||0)+Math.abs(delta)});
-  await renderStock(g('eqBuscador')?.value||'');
+  const stkB=document.getElementById('stkBusc');await renderStock(stkB?stkB.value:'');
   // Actualizar home si está visible
   if(g('homeView')&&g('homeView').style.display!=='none')renderHome();
 }
@@ -2579,40 +2573,18 @@ async function showGlobalTareas(){
       if(!byServ[k])byServ[k]=[];
       byServ[k].push(t);
     });
-    let html='';
-    // Summary cards
-    const pending_sk=tareas.filter(t=>t.tipo==='RIC01'&&!t.skinet);
-    const ric58env=rics.filter(r=>r.estado==='Enviado');
-    const ocUrg=compras.filter(c=>c.tipo==='Orden de Provisión (OC)'&&c.estadoOC==='Sin Oferentes');
-    html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin-bottom:.7rem">
-      <div style="background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:.6rem .5rem;text-align:center;box-shadow:var(--sh)">
-        <div style="font-size:1.2rem">✅</div>
-        <div style="font-size:1.1rem;font-weight:700;color:var(--az)">${tareas.length}</div>
-        <div style="font-size:.62rem;color:var(--dim)">Tareas total</div>
-      </div>
-      <div style="background:${pending_sk.length?'var(--nali)':'var(--s1)'};border:1.5px solid ${pending_sk.length?'var(--naba)':'var(--brd)'};border-radius:10px;padding:.6rem .5rem;text-align:center;box-shadow:var(--sh)">
-        <div style="font-size:1.2rem">📱</div>
-        <div style="font-size:1.1rem;font-weight:700;color:${pending_sk.length?'var(--na)':'var(--ve2)'}">${pending_sk.length}</div>
-        <div style="font-size:.62rem;color:var(--dim)">Pend. SKINET</div>
-      </div>
-      <div style="background:${ocUrg.length?'var(--roli)':'var(--s1)'};border:1.5px solid ${ocUrg.length?'var(--roba)':'var(--brd)'};border-radius:10px;padding:.6rem .5rem;text-align:center;box-shadow:var(--sh)">
-        <div style="font-size:1.2rem">🚨</div>
-        <div style="font-size:1.1rem;font-weight:700;color:${ocUrg.length?'var(--ro)':'var(--ve2)'}">${ocUrg.length}</div>
-        <div style="font-size:.62rem;color:var(--dim)">OC Sin ofert.</div>
-      </div>
-    </div>`;
-
-    // RIC01 pending SKINET
-    if(pending_sk.length){
-      html+=`<div class="warnbx" style="margin-bottom:.6rem">⚠️ <b>${pending_sk.length} tareas RIC01</b> pendientes de registrar en SKINET:</div>`;
-      html+=`<div class="tw" style="margin-bottom:.7rem"><table>
-        <thead><tr><th>Descripción</th><th>Servicio</th><th>Fecha</th><th>Usuario</th></tr></thead>
-        <tbody>${pending_sk.map(t=>`<tr>
-          <td style="font-size:.72rem;max-width:160px">${es(t.descripcion)}</td>
-          <td style="font-size:.64rem">${es(t.servicio)}</td>
-          <td style="font-size:.63rem">${t.fecha||'—'}</td>
-          <td style="font-size:.63rem">${es(t.usuario)}</td>
-        </tr>`).join('')}</tbody></table></div>`;
+    let html=`
+      <button class="volver" onclick="goHome()">← Inicio</button>
+      <div class="sectit"><span>✅</span> Todas las Tareas</div>
+      <div class="tbar" style="margin-bottom:.5rem">
+        <button class="btn baz2" onclick="openGlobalForm('tarea')">✏️ Nueva Tarea</button>
+        <button class="btn" style="background:#f3e5ff;color:var(--pu);border:1.5px solid #d7b3f8" onclick="openGlobalForm('compra')">🛒 Nueva Compra</button>
+      </div>`;
+    const abiertas_total=tareas.filter(t=>t.estado!=='Cerrada'&&t.estado!=='Archivada');
+    const ric01PendSk=tareas.filter(t=>t.tipo==='RIC01'&&!t.skinet&&t.estado!=='Archivada');
+    const cerradas_total=tareas.filter(t=>t.estado==='Cerrada');
+    if(ric01PendSk.length){
+      html+=`<div class="warnbx" style="margin-bottom:.5rem">📱 <b>${ric01PendSk.length} tarea${ric01PendSk.length>1?'s':''} RIC01</b> pendiente${ric01PendSk.length>1?'s':''} de registrar en SKINET</div>`;
     }
 
     // ── Tareas y Compras GENERALES (sin servicio asignado) ──
