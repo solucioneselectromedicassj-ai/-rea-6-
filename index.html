@@ -459,7 +459,7 @@ const SRVS=[
 ];
 const GASTRO=['GASTROENTEROLOGIA','ENDOSCOPIA','ENDOSCOPÍA','GASTROENTEROLOGÍA'];
 const EST_EQ=['En Servicio','Rep. en Fabrica','En Deposito IC','Esp. Repuestos','Fuera de Servicio'];
-const EST_EX=['Iniciado','En Trámite','Aprobado','Archivado','Rechazado'];
+const EST_EX=['Iniciado','En Trámite','Aprobado','Entregado','Archivado','Rechazado'];
 const EST_RIC58=['Enviado','Negado','Convertido a Expediente'];
 const EST_OR=['Iniciada','En Proceso','Completada','Cancelada'];
 const EST_ACTA=['Abierta','Equipo enviado','En reparación','Esperando repuestos','Equipo regresó','Cerrada'];
@@ -786,84 +786,158 @@ async function showHomeExpedientes(){
   try{
     const [exps,rics]=await Promise.all([getAll('expedientes'),getAll('ric58')]);
     const hoy=today();
-    const expAbiertos=exps.filter(e=>e.estado!=='Archivado'&&e.estado!=='Rechazado');
-    const expCerrados=exps.filter(e=>e.estado==='Archivado'||e.estado==='Rechazado');
-    const ric58Env=rics.filter(r=>r.estado==='Enviado');
-    const ric58Ot=rics.filter(r=>r.estado!=='Enviado');
-    // Agrupar expedientes por servicio
+    const expActivos=exps.filter(e=>e.estado!=='Archivado'&&e.estado!=='Rechazado');
+    const expArchivados=exps.filter(e=>e.estado==='Archivado'||e.estado==='Rechazado');
+    const ricActivos=rics.filter(r=>r.estado!=='Convertido a Expediente'&&r.estado!=='Archivado');
+    const ricArchivados=rics.filter(r=>r.estado==='Convertido a Expediente'||r.estado==='Archivado');
+    const ricEnv=ricActivos.filter(r=>!r.estado||r.estado==='Enviado');
+    const ricNeg=ricActivos.filter(r=>r.estado==='Negado');
+
+    // Card de expediente — tappeable igual que equipos
+    const expCard=(e)=>{
+      const fi=toD(e.fechaInicio),d=diff(fi,hoy);
+      const est=e.estado||'Iniciado';
+      const estIdx=EST_EX.filter(s=>s!=='Archivado'&&s!=='Rechazado').indexOf(est);
+      const nextEst=EST_EX.filter(s=>s!=='Archivado'&&s!=='Rechazado')[(estIdx+1)%EST_EX.filter(s=>s!=='Archivado'&&s!=='Rechazado').length];
+      const stColor=est==='Entregado'?'var(--ve2)':est==='Aprobado'?'#059669':est==='En Trámite'?'var(--az)':est==='Rechazado'?'var(--ro)':'var(--na)';
+      const archivable=est==='Entregado'||est==='Rechazado';
+      return`<div onclick="verExpediente(${e.id})" style="background:var(--s1);border:1.5px solid var(--brd);border-left:4px solid ${stColor};
+        border-radius:10px;padding:.65rem .75rem;margin-bottom:.38rem;box-shadow:var(--sh);cursor:pointer;-webkit-tap-highlight-color:transparent">
+        <div style="display:flex;align-items:flex-start;gap:.5rem">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center;margin-bottom:.2rem">
+              <span style="font-size:.8rem;font-weight:700;color:var(--az)">Exp. ${es(e.numero)}</span>
+              <span style="font-size:.65rem;font-weight:700;color:${stColor};background:${stColor}18;border:1px solid ${stColor}55;border-radius:20px;padding:.1rem .42rem">${est}</span>
+            </div>
+            <div style="font-size:.73rem;line-height:1.4;margin-bottom:.22rem">${es(e.descripcion)}</div>
+            <div style="font-size:.62rem;color:var(--dim)">
+              ${e.servicio?`<span style="color:var(--az)">${es(e.servicio)}</span> · `:''}
+              Inicio: ${fd(fi)||'—'} · <b style="color:var(--cy)">${d!==null?d+'d':''}</b>
+              ${e.responsable?` · 👤 ${es(e.responsable)}`:''}
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.22rem;flex-shrink:0" onclick="event.stopPropagation()">
+            <button class="ab" style="background:var(--az3);color:var(--az);border-color:var(--az)" onclick="avanzarEstadoEx(${e.id},'${nextEst}')" title="→ ${nextEst}">→</button>
+            <button class="ab" onclick="curSrv=null;editR('expediente',${e.id})">✏️</button>
+            ${archivable?`<button class="ab" style="background:var(--veli);color:var(--ve2);border-color:var(--veba)" onclick="archivarExG(${e.id})" title="Archivar">🗃</button>`:''}
+            <button class="ab" onclick="delR('expediente',${e.id})">🗑</button>
+          </div>
+        </div>
+      </div>`;
+    };
+
+    // Card de RIC-58
+    const ricCard=(r)=>{
+      const fi=toD(r.fechaEnvio),d=diff(fi,hoy);
+      const esNeg=r.estado==='Negado';
+      const brdColor=esNeg?'var(--ro)':'var(--pu)';
+      return`<div style="background:var(--s1);border:1.5px solid var(--brd);border-left:4px solid ${brdColor};
+        border-radius:10px;padding:.65rem .75rem;margin-bottom:.38rem;box-shadow:var(--sh)">
+        <div style="display:flex;align-items:flex-start;gap:.5rem">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center;margin-bottom:.2rem">
+              <span style="font-size:.75rem;font-weight:700;color:var(--pu)">RIC-58 ${es(r.numero||'—')}</span>
+              ${esNeg?`<span class="pill pal">✕ Negado</span>`:`<span class="pill ppu">📤 Enviado</span>`}
+            </div>
+            <div style="font-size:.73rem;line-height:1.4;margin-bottom:.2rem">${es(r.descripcion)}</div>
+            <div style="font-size:.62rem;color:var(--dim)">
+              ${r.servicio?`<span style="color:var(--az)">${es(r.servicio)}</span> · `:''}
+              ${fd(fi)||'—'} · <b style="color:var(--cy)">${d!==null?d+'d':''}</b>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.22rem;flex-shrink:0">
+            ${!esNeg?`<button class="ab cvt" onclick="convertirRic58Global(${r.id})" title="Aprobado → Convertir a Expediente">📁 Exp.</button>`:''}
+            ${!esNeg?`<button class="ab" style="background:var(--roli);color:var(--ro);border-color:var(--roba)" onclick="negarRic58G(${r.id})" title="Negado">✕ Neg.</button>`:''}
+            <button class="ab" onclick="curSrv=null;editR('ric58',${r.id})">✏️</button>
+            <button class="ab" onclick="archivarRic58G(${r.id})" title="Archivar">🗃</button>
+            <button class="ab" onclick="delR('ric58',${r.id})">🗑</button>
+          </div>
+        </div>
+      </div>`;
+    };
+
+    // ── HTML ──
+    let html=`
+      <button class="volver" onclick="goHome()">← Inicio</button>
+      <div class="sectit"><span>📁</span> Expedientes & RIC-58</div>
+      <div class="tbar" style="margin-bottom:.5rem;flex-wrap:wrap;gap:.3rem">
+        <button class="btn baz2" onclick="openExpGlobal()">+ Expediente</button>
+        <button class="btn" style="background:#f3e5ff;color:var(--pu);border:1.5px solid #d7b3f8" onclick="openRic58Global()">+ RIC-58</button>
+        <div class="sp"></div>
+        <span class="bx baz">${expActivos.length} exp.</span>
+        ${ricActivos.length?`<span class="bx bpu">${ricActivos.length} RIC-58</span>`:''}
+      </div>`;
+
+    // RIC-58 activos primero si hay
+    if(ricActivos.length){
+      html+=`<div class="stitle" style="color:var(--pu);margin-bottom:.35rem">📋 RIC-58 pendientes (${ricActivos.length})</div>`;
+      ricActivos.forEach(r=>html+=ricCard(r));
+    }
+
+    // Expedientes agrupados por servicio
     const byServ={};
-    expAbiertos.forEach(e=>{
+    expActivos.forEach(e=>{
       const k=e.servicio||'General';
       if(!byServ[k])byServ[k]=[];
       byServ[k].push(e);
     });
-    let html=`
-      <button class="volver" onclick="goHome()">← Inicio</button>
-      <div class="sectit"><span>📁</span> Expedientes & RIC-58 · Global</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin-bottom:.7rem">
-        <div style="background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
-          <div style="font-size:1.1rem">📁</div>
-          <div style="font-size:1rem;font-weight:700;color:var(--az)">${expAbiertos.length}</div>
-          <div style="font-size:.6rem;color:var(--dim)">Exp. abiertos</div>
-        </div>
-        <div style="background:${ric58Env.length?'#f3e5ff':'var(--s1)'};border:1.5px solid ${ric58Env.length?'#d7b3f8':'var(--brd)'};border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
-          <div style="font-size:1.1rem">📋</div>
-          <div style="font-size:1rem;font-weight:700;color:var(--pu)">${ric58Env.length}</div>
-          <div style="font-size:.6rem;color:var(--dim)">RIC-58 env.</div>
-        </div>
-        <div style="background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
-          <div style="font-size:1.1rem">✅</div>
-          <div style="font-size:1rem;font-weight:700;color:var(--ve2)">${expCerrados.length}</div>
-          <div style="font-size:.6rem;color:var(--dim)">Cerrados</div>
-        </div>
-      </div>`;
-    // RIC-58 enviados primero
-    if(ric58Env.length){
-      html+=`<div class="stitle" style="color:var(--pu)">📋 RIC-58 Enviados (${ric58Env.length})</div>
-      <div class="tw" style="margin-bottom:.65rem"><table>
-        <thead><tr><th>N°</th><th>Descripción</th><th>Servicio</th><th>Fecha</th><th>Estado</th></tr></thead>
-        <tbody>${ric58Env.map(r=>`<tr>
-          <td><b style="font-size:.72rem">${es(r.numero)}</b></td>
-          <td style="font-size:.71rem;max-width:130px">${es(r.descripcion)}</td>
-          <td style="font-size:.63rem">${es(r.servicio||'—')}</td>
-          <td style="font-size:.62rem">${r.fechaEnvio||'—'}</td>
-          <td><span class="pill ppu">Enviado</span></td>
-        </tr>`).join('')}</tbody></table></div>`;
-    }
-    // Expedientes por servicio
     Object.keys(byServ).sort().forEach(srv=>{
       const rows=byServ[srv];
       const srvInfo=SRVS.find(s=>mSrv(s.id,srv));
-      html+=`<div class="stitle">${srvInfo?srvInfo.ico+' ':''} ${es(srv)} (${rows.length})</div>`;
-      rows.forEach(e=>{
-        const fi=toD(e.fechaInicio),d=diff(fi,hoy);
-        const stColor=e.estado==='Aprobado'?'var(--ve2)':e.estado==='En Trámite'?'var(--az)':'var(--na)';
-        html+=`<div style="background:var(--s1);border:1.5px solid var(--brd);border-left:4px solid ${stColor};border-radius:10px;padding:.6rem .7rem;margin-bottom:.32rem;box-shadow:var(--sh)">
-          <div style="display:flex;align-items:flex-start;gap:.45rem">
-            <div style="flex:1;min-width:0">
-              <div style="display:flex;gap:.25rem;flex-wrap:wrap;align-items:center;margin-bottom:.18rem">
-                <span style="font-size:.73rem;font-weight:700;color:var(--az)">Exp. ${es(e.numero)}</span>
-                ${pill(e.estado,'ex')}
-              </div>
-              <div style="font-size:.71rem;line-height:1.35">${es(e.descripcion)}</div>
-              <div style="font-size:.61rem;color:var(--dim);margin-top:.12rem">Inicio: ${fd(fi)||'—'}${d!==null?` · <b style="color:var(--cy)">${d}d</b>`:''}</div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:.2rem;flex-shrink:0">
-              <button class="ab" onclick="cambiarEstadoExG(${e.id})" style="background:var(--az3);color:var(--az);border-color:var(--az)" title="Cambiar estado">≡</button>
-              <button class="ab" onclick="curSrv=null;editR('expediente',${e.id})">✏️</button>
-              <button class="ab" onclick="archivarExG(${e.id})" title="Archivar">🗃</button>
-            </div>
-          </div>
-        </div>`;
-      });
+      html+=`<div class="stitle" style="margin-top:.4rem">${srvInfo?srvInfo.ico+' ':''} ${es(srv)} (${rows.length})</div>`;
+      rows.forEach(e=>html+=expCard(e));
     });
-    if(!exps.length&&!rics.length)html+=`<div class="emp"><div class="ei">📁</div>Sin expedientes registrados.</div>`;
+
+    if(!expActivos.length&&!ricActivos.length)
+      html+=`<div class="emp"><div class="ei">📁</div>Sin expedientes ni RIC-58.<br>Usá los botones de arriba para agregar.</div>`;
+
+    // Archivados colapsados
+    const totalArch=expArchivados.length+ricArchivados.length;
+    if(totalArch){
+      html+=`<details style="margin-top:.5rem"><summary style="font-size:.72rem;font-weight:700;color:var(--dim);cursor:pointer;padding:.3rem 0">📁 Archivados (${totalArch})</summary>
+      <div style="margin-top:.3rem;opacity:.7">
+        ${expArchivados.map(e=>`<div style="background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.48rem .65rem;margin-bottom:.28rem;display:flex;align-items:center;gap:.45rem">
+          <div style="flex:1"><span style="font-size:.7rem;font-weight:700;color:var(--dim)">Exp. ${es(e.numero)}</span>
+            <span class="pill pdim" style="margin-left:.2rem;font-size:.58rem">${e.estado}</span>
+            <div style="font-size:.62rem;color:var(--dim)">${es(e.descripcion)}</div>
+          </div>
+          <button class="ab" onclick="reabrirExG(${e.id})">↩</button>
+          <button class="ab" onclick="delR('expediente',${e.id})">🗑</button>
+        </div>`).join('')}
+        ${ricArchivados.map(r=>`<div style="background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.48rem .65rem;margin-bottom:.28rem;display:flex;align-items:center;gap:.45rem">
+          <div style="flex:1"><span style="font-size:.7rem;font-weight:700;color:var(--dim)">RIC-58 ${es(r.numero)}</span>
+            ${r.estado==='Convertido a Expediente'?`<span class="pill pok" style="margin-left:.2rem;font-size:.58rem">📁 Exp.${es(r.expGenerado||'')}</span>`:`<span class="pill pdim" style="margin-left:.2rem;font-size:.58rem">Archivado</span>`}
+            <div style="font-size:.62rem;color:var(--dim)">${es(r.descripcion)}</div>
+          </div>
+          <button class="ab" onclick="reabrirRic58G(${r.id})">↩</button>
+          <button class="ab" onclick="delR('ric58',${r.id})">🗑</button>
+        </div>`).join('')}
+      </div></details>`;
+    }
     el.innerHTML=html;
   }catch(e){el.innerHTML=`<div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div>`}
 }
 
-// ── Funciones de expedientes desde vista global ──
+
+// ── Funciones de expedientes y RIC-58 globales ──
+function openExpGlobal(){
+  curSrv=null;curSubSrv=null;
+  _afterSaveCallback=()=>showHomeExpedientes();
+  openForm('expediente');
+}
+function openRic58Global(){
+  curSrv=null;curSubSrv=null;
+  _afterSaveCallback=()=>showHomeExpedientes();
+  openForm('ric58');
+}
+async function avanzarEstadoEx(id,next){
+  const all=await getAll('expedientes');
+  const e=all.find(x=>x.id===id);if(!e)return;
+  await put('expedientes',{...e,estado:next,mod:new Date().toLocaleDateString('es-AR')});
+  toast('Estado → '+next,'ok');await showHomeExpedientes();
+}
 async function cambiarEstadoExG(id){
+  // Compatibilidad — cicla al siguiente estado
   const all=await getAll('expedientes');
   const e=all.find(x=>x.id===id);if(!e)return;
   const estados=EST_EX.filter(s=>s!=='Archivado'&&s!=='Rechazado');
@@ -879,6 +953,96 @@ async function archivarExG(id){
     await put('expedientes',{...e,estado:'Archivado',mod:new Date().toLocaleDateString('es-AR')});
     toast('Expediente archivado','ok');await showHomeExpedientes();
   });
+}
+async function reabrirExG(id){
+  const all=await getAll('expedientes');
+  const e=all.find(x=>x.id===id);if(!e)return;
+  await put('expedientes',{...e,estado:'Iniciado',mod:new Date().toLocaleDateString('es-AR')});
+  toast('Expediente reabierto','ok');await showHomeExpedientes();
+}
+// Panel de detalle al tocar un expediente
+async function verExpediente(id){
+  const all=await getAll('expedientes');
+  const e=all.find(x=>x.id===id);if(!e)return;
+  const hoy=today();
+  const fi=toD(e.fechaInicio),d=diff(fi,hoy);
+  const est=e.estado||'Iniciado';
+  const stColor=est==='Entregado'?'var(--ve2)':est==='Aprobado'?'#059669':est==='En Trámite'?'var(--az)':est==='Rechazado'?'var(--ro)':'var(--na)';
+  const estados=EST_EX.filter(s=>s!=='Archivado'&&s!=='Rechazado');
+  const archivable=est==='Entregado'||est==='Rechazado';
+  g('fptit').innerHTML=`📁 Exp. ${es(e.numero)}`;
+  g('fpbody').innerHTML=`
+    <div style="background:${stColor}18;border:1.5px solid ${stColor}55;border-radius:9px;padding:.5rem .75rem;margin-bottom:.65rem;display:flex;align-items:center;gap:.5rem">
+      <div style="font-size:1.2rem">📁</div>
+      <div>
+        <div style="font-size:.78rem;font-weight:700;color:${stColor}">${est}</div>
+        <div style="font-size:.64rem;color:var(--dim)">${d!==null?d+'d desde inicio':''}</div>
+      </div>
+    </div>
+    <div style="font-size:.78rem;line-height:1.5;margin-bottom:.6rem">${es(e.descripcion)}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.35rem .6rem;font-size:.72rem;margin-bottom:.6rem">
+      <div><span style="color:var(--dim);font-size:.63rem;display:block">Servicio</span><b>${es(e.servicio||'—')}</b></div>
+      <div><span style="color:var(--dim);font-size:.63rem;display:block">Sub-servicio</span><b>${es(e.subServicio||'—')}</b></div>
+      <div><span style="color:var(--dim);font-size:.63rem;display:block">Fecha inicio</span><b>${fd(fi)||'—'}</b></div>
+      <div><span style="color:var(--dim);font-size:.63rem;display:block">Responsable</span><b>${es(e.responsable||'—')}</b></div>
+      ${e.origenRic58?`<div style="grid-column:1/-1"><span style="color:var(--dim);font-size:.63rem;display:block">Origen RIC-58</span><b>${es(e.origenRic58)}</b></div>`:''}
+    </div>
+    <div class="stitle">Cambiar estado</div>
+    <div style="display:flex;gap:.28rem;flex-wrap:wrap;margin-bottom:.2rem">
+      ${estados.map(s=>`<button onclick="avanzarEstadoEx(${e.id},'${s}');closeForm()" style="background:${s===est?stColor:'var(--s2)'};color:${s===est?'#fff':'var(--txt)'};border:1.5px solid ${s===est?stColor:'var(--brd)'};border-radius:20px;padding:.22rem .6rem;font-size:.7rem;cursor:pointer;font-weight:${s===est?'700':'400'}">${s}</button>`).join('')}
+    </div>`;
+  g('fpfoot').innerHTML=`
+    <button class="btn bgr" onclick="closeForm()">Cerrar</button>
+    <button class="btn baz2" onclick="closeForm();curSrv=null;editR('expediente',${e.id})">✏️ Editar</button>
+    ${archivable?`<button class="btn" style="background:var(--veli);color:var(--ve2);border:1.5px solid var(--veba)" onclick="closeForm();archivarExG(${e.id})">🗃 Archivar</button>`:''}`;
+  g('fp').classList.add('open');
+}
+// RIC-58 globales
+async function convertirRic58Global(id){
+  // Reutiliza el flow existente pero vuelve a showHomeExpedientes
+  const all=await getAll('ric58');
+  const ric=all.find(r=>r.id===id);if(!ric)return;
+  g('fptit').innerHTML='📁 Convertir RIC-58 → Expediente';
+  g('fpbody').innerHTML=`
+    <div class="cvt-box">
+      <label>RIC-58 "${es(ric.numero)}" - ${es(ric.descripcion)}</label>
+      <p style="font-size:.7rem;color:var(--ve);margin-bottom:.45rem">Ingresá el número de expediente asignado:</p>
+      <input id="cvtNumG" placeholder="Ej: 1234/2025" style="width:100%;background:#fff;border:1.5px solid var(--veba);border-radius:6px;padding:.45rem .6rem;font-size:.85rem">
+    </div>`;
+  g('fpfoot').innerHTML=`
+    <button class="btn bgr" onclick="closeForm()">Cancelar</button>
+    <button class="btn bve" onclick="confirmarConversionG(${id})">✅ Confirmar</button>`;
+  g('fp').classList.add('open');
+}
+async function confirmarConversionG(id){
+  const numExp=(document.getElementById('cvtNumG')?.value||'').trim();
+  if(!numExp){toast('Ingresá el número de expediente','er');return}
+  const all=await getAll('ric58');
+  const ric=all.find(r=>r.id===id);if(!ric)return;
+  const hoy=new Date().toLocaleDateString('es-AR');
+  await put('expedientes',{id:Date.now(),numero:numExp,servicio:ric.servicio,subServicio:ric.subServicio||'',
+    descripcion:ric.descripcion,fechaInicio:hoy,estado:'Iniciado',responsable:user?.n||'',usuario:user?.n||'',mod:hoy,origenRic58:ric.numero});
+  await put('ric58',{...ric,estado:'Convertido a Expediente',expGenerado:numExp,mod:hoy});
+  closeForm();
+  toast('✅ Expediente '+numExp+' creado','ok');
+  await showHomeExpedientes();
+}
+async function negarRic58G(id){
+  const all=await getAll('ric58');const r=all.find(x=>x.id===id);if(!r)return;
+  await put('ric58',{...r,estado:'Negado',mod:new Date().toLocaleDateString('es-AR')});
+  toast('RIC-58 negado','ok');await showHomeExpedientes();
+}
+async function archivarRic58G(id){
+  cfm2('¿Archivar este RIC-58?',async()=>{
+    const all=await getAll('ric58');const r=all.find(x=>x.id===id);if(!r)return;
+    await put('ric58',{...r,estado:'Archivado',mod:new Date().toLocaleDateString('es-AR')});
+    toast('RIC-58 archivado','ok');await showHomeExpedientes();
+  });
+}
+async function reabrirRic58G(id){
+  const all=await getAll('ric58');const r=all.find(x=>x.id===id);if(!r)return;
+  await put('ric58',{...r,estado:'Enviado',mod:new Date().toLocaleDateString('es-AR')});
+  toast('RIC-58 reabierto','ok');await showHomeExpedientes();
 }
 
 // ── Vista Actas global desde Home ──
