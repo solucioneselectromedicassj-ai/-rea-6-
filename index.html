@@ -464,7 +464,7 @@ const EST_RIC58=['Enviado','Negado','Convertido a Expediente'];
 const EST_OR=['Iniciada','En Proceso','Completada','Cancelada'];
 const EST_ACTA=['Abierta','Equipo enviado','En reparación','Esperando repuestos','Equipo regresó','Cerrada'];
 const TIPOS_COMPRA=['Caja Chica','Reparación','Orden de Provisión (OC)'];
-const EST_OC=['Pendiente','Sin Oferentes','Entregado','Baja'];
+const EST_OC=['Iniciado','En Trámite','Adjudicado','Sin Oferentes','Entregado','Rechazado','De Baja','Archivado'];
 const MOTIVOS=['Obsoleto','Rotura Irreparable','Pérdida','Robo','Otro'];
 const TIPOS_A=['Salida','Entrada','Préstamo','Traslado'];
 const TIPOS_T=['Tarea General','RIC01','Otro'];
@@ -575,6 +575,55 @@ async function autoMigrate(){
 function showLoad(m=''){g('loadScr').style.display='flex';g('loadMsg').textContent=m}
 function hideLoad(){g('loadScr').style.display='none'}
 
+
+// Helper: ¿esta compra va al historial archivado?
+function compraArchivada(c){
+  return ['Entregado','Rechazado','De Baja','Archivado'].includes(c.estadoOC);
+}
+
+// Card de compra reutilizable (dentro de servicio y en vista global)
+function renderCompraCard(c, afterSaveFn='refreshView'){
+  const est=c.estadoOC||'Iniciado';
+  const archivable=compraArchivada(c);
+  const stColor=
+    est==='Entregado'?'var(--ve2)':
+    est==='Adjudicado'?'#059669':
+    est==='En Trámite'?'var(--az)':
+    est==='Sin Oferentes'?'var(--ro)':
+    est==='Rechazado'||est==='De Baja'||est==='Archivado'?'var(--dim)':
+    'var(--na)'; // Iniciado
+  const esOC=c.tipo==='Orden de Provisión (OC)';
+  const tipoPill=esOC?`<span class="pill ppu">OC</span>`:
+    c.tipo==='Caja Chica'?`<span class="pill pgold">💰</span>`:
+    `<span class="pill pin">🔧</span>`;
+  // siguiente estado en el ciclo activo
+  const activos=['Iniciado','En Trámite','Adjudicado'];
+  const idx=activos.indexOf(est);
+  const nextEst=idx>=0?activos[(idx+1)%activos.length]:null;
+  return`<div onclick="verCompra(${c.id})" style="background:var(--s1);border:1.5px solid ${est==='Sin Oferentes'?'var(--roba)':'var(--brd)'};border-left:4px solid ${stColor};
+    border-radius:10px;padding:.65rem .75rem;margin-bottom:.38rem;box-shadow:var(--sh);cursor:pointer;-webkit-tap-highlight-color:transparent;opacity:${archivable?.6:1}">
+    <div style="display:flex;align-items:flex-start;gap:.5rem">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center;margin-bottom:.2rem">
+          ${tipoPill}
+          <span style="font-size:.65rem;font-weight:700;color:${stColor};background:${stColor}18;border:1px solid ${stColor}55;border-radius:20px;padding:.1rem .42rem">${est}</span>
+          ${c.nroc?`<span style="font-size:.62rem;color:var(--dim)">N° ${es(c.nroc)}</span>`:''}
+        </div>
+        <div style="font-size:.74rem;font-weight:600;line-height:1.35;margin-bottom:.18rem">${es(c.descripcion)}</div>
+        <div style="font-size:.62rem;color:var(--dim)">
+          ${c.servicio?`<span style="color:var(--az)">${es(c.servicio)}</span> · `:''}
+          ${c.fecha||'—'} · ${es(c.usuario||'')}
+          ${c.observaciones?` · ${es(c.observaciones).substring(0,40)}`:''}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.28rem;flex-shrink:0" onclick="event.stopPropagation()">
+        ${nextEst&&!archivable?`<button style="background:var(--az3);color:var(--az);border:1.5px solid var(--az);border-radius:8px;padding:.35rem .55rem;font-size:.78rem;font-weight:700;cursor:pointer;min-width:36px" onclick="avanzarEstadoCompra(${c.id},'${nextEst}')" title="→ ${nextEst}">→</button>`:''}
+        ${!archivable?`<button style="background:var(--s2);border:1.5px solid var(--brd);border-radius:8px;padding:.35rem .5rem;font-size:.78rem;cursor:pointer;min-width:36px" onclick="curSrv=null;editR('compra',${c.id})" title="Editar">✏️</button>`:''}
+        ${archivable?`<button style="background:var(--s2);border:1.5px solid var(--brd);border-radius:8px;padding:.35rem .5rem;font-size:.72rem;cursor:pointer" onclick="reabrirCompra(${c.id})" title="Reabrir">↩</button>`:''}
+      </div>
+    </div>
+  </div>`;
+}
 // ════════════════════════════════════
 // HOME — Tablero de Control Principal
 // ════════════════════════════════════
@@ -710,12 +759,12 @@ async function showHomeCompras(){
   el.innerHTML='<div style="color:var(--dim);font-size:.78rem;padding:.4rem">Cargando...</div>';
   try{
     const compras=await getAll('compras');
-    const urgentes=compras.filter(c=>c.tipo==='Orden de Provisión (OC)'&&c.estadoOC==='Sin Oferentes');
-    const activas=compras.filter(c=>!urgentes.includes(c)&&c.estadoOC!=='Entregado'&&c.estadoOC!=='Baja');
-    const archivadas=compras.filter(c=>c.estadoOC==='Entregado'||c.estadoOC==='Baja');
-    // Agrupar activas por servicio
+    const activas=compras.filter(c=>!compraArchivada(c));
+    const archivadas=compras.filter(c=>compraArchivada(c));
+    const urgentes=activas.filter(c=>c.estadoOC==='Sin Oferentes');
+    // agrupar activas por servicio
     const byServ={};
-    [...urgentes,...activas].forEach(c=>{
+    activas.forEach(c=>{
       const k=c.servicio||'General';
       if(!byServ[k])byServ[k]=[];
       byServ[k].push(c);
@@ -723,58 +772,84 @@ async function showHomeCompras(){
     let html=`
       <button class="volver" onclick="goHome()">← Inicio</button>
       <div class="sectit"><span>🛒</span> Compras / OC · Global</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin-bottom:.7rem">
-        <div style="background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
-          <div style="font-size:1.1rem">🛒</div>
-          <div style="font-size:1rem;font-weight:700;color:var(--az)">${compras.length}</div>
-          <div style="font-size:.6rem;color:var(--dim)">Total</div>
-        </div>
-        <div style="background:${urgentes.length?'var(--roli)':'var(--s1)'};border:1.5px solid ${urgentes.length?'var(--roba)':'var(--brd)'};border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
-          <div style="font-size:1.1rem">🚨</div>
-          <div style="font-size:1rem;font-weight:700;color:${urgentes.length?'var(--ro)':'var(--ve2)'}">${urgentes.length}</div>
-          <div style="font-size:.6rem;color:var(--dim)">Sin oferentes</div>
-        </div>
-        <div style="background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:.55rem .4rem;text-align:center;box-shadow:var(--sh)">
-          <div style="font-size:1.1rem">✅</div>
-          <div style="font-size:1rem;font-weight:700;color:var(--ve2)">${archivadas.length}</div>
-          <div style="font-size:.6rem;color:var(--dim)">Entregadas</div>
-        </div>
+      <div class="tbar" style="margin-bottom:.5rem;flex-wrap:wrap;gap:.3rem">
+        <button class="btn baz2" onclick="openCompraGlobal()">+ Nueva Compra / OC</button>
+        <div class="sp"></div>
+        <span class="bx baz">${activas.length} activas</span>
+        ${urgentes.length?`<span class="bx bro">🚨 ${urgentes.length} sin oferentes</span>`:''}
       </div>`;
+    if(urgentes.length)
+      html+=`<div class="warnbx" style="margin-bottom:.5rem">🚨 <b>${urgentes.length} OC sin oferentes</b> — re-gestionar urgente</div>`;
     Object.keys(byServ).sort().forEach(srv=>{
       const rows=byServ[srv];
       const srvInfo=SRVS.find(s=>mSrv(s.id,srv));
-      html+=`<div class="stitle">${srvInfo?srvInfo.ico+' ':''} ${es(srv)} (${rows.length})</div>
-      <div class="tw" style="margin-bottom:.6rem"><table>
-        <thead><tr><th>Descripción</th><th>Tipo</th><th>Estado OC</th><th>N° OC</th><th>Fecha</th><th></th></tr></thead>
-        <tbody>${rows.map(c=>{
-          const pill_t=c.tipo==='Orden de Provisión (OC)'?`<span class="pill ppu">OC</span>`:`<span class="pill pgold">Compra</span>`;
-          const pill_e=c.estadoOC?`<span class="pill ${c.estadoOC==='Sin Oferentes'?'pal':c.estadoOC==='Pendiente'?'pwn':'pdim'}">${es(c.estadoOC)}</span>`:'—';
-          return`<tr${c.estadoOC==='Sin Oferentes'?' style="background:var(--roli)"':''}>
-            <td style="font-size:.72rem;max-width:140px"><b>${es(c.descripcion)}</b>${c.subServicio?`<br><span style="color:var(--dim);font-size:.62rem">${es(c.subServicio)}</span>`:''}</td>
-            <td>${pill_t}</td><td>${pill_e}</td>
-            <td style="font-size:.63rem">${es(c.nroc||'—')}</td>
-            <td style="font-size:.62rem">${c.fecha||'—'}</td>
-            <td><div class="arow">
-              <button class="ab" onclick="curSrv=null;editR('compra',${c.id})">✏️</button>
-              <button class="ab" onclick="delR('compra',${c.id})">🗑</button>
-            </div></td>
-          </tr>`;
-        }).join('')}</tbody></table></div>`;
+      html+=`<div class="stitle">${srvInfo?srvInfo.ico+' ':''} ${es(srv)} (${rows.length})</div>`;
+      rows.forEach(c=>html+=renderCompraCard(c));
     });
-    if(!compras.length)html+=`<div class="emp"><div class="ei">🛒</div>Sin compras registradas.</div>`;
+    if(!activas.length) html+=`<div class="emp"><div class="ei">🛒</div>Sin compras activas.</div>`;
     if(archivadas.length){
-      html+=`<div class="stitle" style="color:var(--dim)">✅ Entregadas / Archivadas (${archivadas.length})</div>
-      <div class="tw" style="opacity:.65"><table>
-        <thead><tr><th>Descripción</th><th>Servicio</th><th>N° OC</th><th>Fecha</th></tr></thead>
-        <tbody>${archivadas.map(c=>`<tr>
-          <td style="font-size:.72rem;text-decoration:line-through;color:var(--dim)">${es(c.descripcion)}</td>
-          <td style="font-size:.63rem">${es(c.servicio||'—')}</td>
-          <td style="font-size:.63rem">${es(c.nroc||'—')}</td>
-          <td style="font-size:.62rem">${c.fecha||'—'}</td>
-        </tr>`).join('')}</tbody></table></div>`;
+      html+=`<details style="margin-top:.5rem"><summary style="font-size:.72rem;font-weight:700;color:var(--dim);cursor:pointer;padding:.3rem 0">📁 Archivadas / Entregadas (${archivadas.length})</summary>
+      <div style="margin-top:.3rem">${archivadas.map(c=>renderCompraCard(c)).join('')}</div></details>`;
     }
     el.innerHTML=html;
   }catch(e){el.innerHTML=`<div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div>`}
+}
+
+
+// ── Funciones de compras ──
+function openCompraGlobal(){
+  curSrv=null;curSubSrv=null;
+  _afterSaveCallback=()=>showHomeCompras();
+  openForm('compra');
+}
+async function avanzarEstadoCompra(id,next){
+  const all=await getAll('compras');
+  const c=all.find(x=>x.id===id);if(!c)return;
+  await put('compras',{...c,estadoOC:next,mod:new Date().toLocaleDateString('es-AR')});
+  toast('Estado → '+next,'ok');
+  if(g('globalView')&&g('globalView').style.display!=='none') await showHomeCompras();
+  else await refreshView();
+}
+async function reabrirCompra(id){
+  const all=await getAll('compras');
+  const c=all.find(x=>x.id===id);if(!c)return;
+  await put('compras',{...c,estadoOC:'Iniciado',mod:new Date().toLocaleDateString('es-AR')});
+  toast('Compra reabierta','ok');
+  if(g('globalView')&&g('globalView').style.display!=='none') await showHomeCompras();
+  else await refreshView();
+}
+async function verCompra(id){
+  const all=await getAll('compras');
+  const c=all.find(x=>x.id===id);if(!c)return;
+  const est=c.estadoOC||'Iniciado';
+  const archivable=compraArchivada(c);
+  const stColor=est==='Entregado'?'var(--ve2)':est==='Adjudicado'?'#059669':est==='En Trámite'?'var(--az)':est==='Sin Oferentes'?'var(--ro)':est==='Rechazado'||est==='De Baja'||est==='Archivado'?'var(--dim)':'var(--na)';
+  g('fptit').innerHTML='🛒 '+es(c.descripcion).substring(0,30);
+  g('fpbody').innerHTML=`
+    <div style="background:${stColor}18;border:1.5px solid ${stColor}55;border-radius:9px;padding:.5rem .75rem;margin-bottom:.65rem;display:flex;align-items:center;gap:.5rem">
+      <div style="font-size:1.2rem">🛒</div>
+      <div><div style="font-size:.78rem;font-weight:700;color:${stColor}">${est}</div>
+        ${c.nroc?`<div style="font-size:.64rem;color:var(--dim)">N° OC: ${es(c.nroc)}</div>`:''}
+      </div>
+    </div>
+    <div style="font-size:.78rem;font-weight:600;line-height:1.45;margin-bottom:.6rem">${es(c.descripcion)}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.35rem .6rem;font-size:.72rem;margin-bottom:.6rem">
+      <div><span style="color:var(--dim);font-size:.63rem;display:block">Tipo</span><b>${es(c.tipo||'—')}</b></div>
+      <div><span style="color:var(--dim);font-size:.63rem;display:block">Servicio</span><b>${es(c.servicio||'—')}</b></div>
+      <div><span style="color:var(--dim);font-size:.63rem;display:block">Fecha</span><b>${c.fecha||'—'}</b></div>
+      <div><span style="color:var(--dim);font-size:.63rem;display:block">Usuario</span><b>${es(c.usuario||'—')}</b></div>
+      ${c.observaciones?`<div style="grid-column:1/-1"><span style="color:var(--dim);font-size:.63rem;display:block">Observaciones</span><b>${es(c.observaciones)}</b></div>`:''}
+    </div>
+    <div class="stitle">Cambiar estado</div>
+    <div style="display:flex;gap:.25rem;flex-wrap:wrap;margin-bottom:.2rem">
+      ${EST_OC.map(s=>`<button onclick="avanzarEstadoCompra(${c.id},'${s}');closeForm()" style="background:${s===est?stColor:'var(--s2)'};color:${s===est?'#fff':'var(--txt)'};border:1.5px solid ${s===est?stColor:'var(--brd)'};border-radius:20px;padding:.22rem .6rem;font-size:.68rem;cursor:pointer;font-weight:${s===est?'700':'400'}">${s}</button>`).join('')}
+    </div>`;
+  g('fpfoot').innerHTML=`
+    <button class="btn bgr" onclick="closeForm()">Cerrar</button>
+    <button class="btn baz2" onclick="closeForm();curSrv=null;editR('compra',${c.id})">✏️ Editar</button>
+    ${archivable?`<button class="btn" style="background:var(--veli);color:var(--ve2);border:1.5px solid var(--veba)" onclick="closeForm();reabrirCompra(${c.id})">↩ Reabrir</button>`:''}
+    <button class="btn" style="background:var(--roli);color:var(--ro);border:1.5px solid var(--roba)" onclick="closeForm();delR('compra',${c.id})">🗑</button>`;
+  g('fp').classList.add('open');
 }
 
 // ── Vista Expedientes global desde Home ──
@@ -1909,64 +1984,30 @@ async function confirmarConversion(id){
 async function modCompras(tc){
   const all=await getAll('compras');
   const rows=all.filter(e=>mSrv(e.servicio,curSrv)&&matchSub(e));
-  // OC Sin Oferentes → max priority at top
-  const urgentes=rows.filter(c=>c.tipo==='Orden de Provisión (OC)'&&c.estadoOC==='Sin Oferentes');
-  const activos=rows.filter(c=>!(c.tipo==='Orden de Provisión (OC)'&&(c.estadoOC==='Entregado'||c.estadoOC==='Baja'))&&!urgentes.includes(c));
-  const archivados=rows.filter(c=>c.tipo==='Orden de Provisión (OC)'&&(c.estadoOC==='Entregado'||c.estadoOC==='Baja'));
-
+  const activas=rows.filter(c=>!compraArchivada(c));
+  const archivadas=rows.filter(c=>compraArchivada(c));
+  const urgentes=activas.filter(c=>c.estadoOC==='Sin Oferentes');
   tc.innerHTML=`
     <div class="tbar">
       <button class="btn baz2" onclick="openForm('compra')">+ Nueva Compra / OC</button>
       <div class="sp"></div>
-      ${urgentes.length?`<span class="bx bro">🚨 ${urgentes.length} Sin Oferentes</span>`:''}
+      <span class="bx baz">${activas.length} activas</span>
+      ${urgentes.length?`<span class="bx bro">🚨 ${urgentes.length} sin oferentes</span>`:''}
     </div>
-    ${urgentes.length?`
-      <div class="stitle" style="color:var(--ro)">🚨 MÁXIMA PRIORIDAD · Sin Oferentes (${urgentes.length})</div>
-      ${urgentes.map(c=>`
-        <div class="oc-urgent">
-          <div class="uc">
-            <div class="utag">🚨 SIN OFERENTES — RE-GESTIONAR</div>
-            <b style="font-size:.78rem">${es(c.descripcion)}</b>
-            ${c.nroc?`<br><span style="font-size:.65rem;color:var(--dim)">OC N°: ${es(c.nroc)}</span>`:''}
-            <div style="font-size:.63rem;color:var(--dim);margin-top:.18rem">${c.fecha||'—'} · ${es(c.usuario)}</div>
-          </div>
-          <div class="arow">
-            <button class="ab" onclick="editR('compra',${c.id})">✏️</button>
-            <button class="ab" onclick="delR('compra',${c.id})">🗑</button>
-          </div>
-        </div>`).join('')}
-    `:''}
+    ${urgentes.length?`<div class="warnbx" style="margin-bottom:.45rem">🚨 <b>${urgentes.length} OC sin oferentes</b> — requieren re-gestión urgente</div>`:''}
     ${!rows.length?`<div class="emp"><div class="ei">🛒</div>Sin compras registradas.</div>`:''}
-    ${activos.length?`<div class="stitle">Activas (${activos.length})</div>
-      <div class="tw" style="margin-bottom:.55rem"><table>
-      <thead><tr><th>Descripción</th><th>Tipo</th><th>Estado OC</th><th>N° OC</th><th>Fecha</th><th></th></tr></thead>
-      <tbody>${activos.map(c=>{
-        const tipoBadge=c.tipo==='Orden de Provisión (OC)'?`<span class="pill ppu">OC</span>`:c.tipo==='Caja Chica'?`<span class="pill pgold">💰 Caja Chica</span>`:`<span class="pill pin">🔧 Reparación</span>`;
-        const ocEst=c.tipo==='Orden de Provisión (OC)'?pill(c.estadoOC,'oc'):'—';
-        return`<tr>
-          <td style="font-size:.71rem;max-width:140px">${es(c.descripcion)}</td>
-          <td>${tipoBadge}</td>
-          <td>${ocEst}</td>
-          <td style="font-size:.65rem">${es(c.nroc||'—')}</td>
-          <td style="font-size:.63rem">${c.fecha||'—'}</td>
-          <td><div class="arow">
-            <button class="ab" onclick="editR('compra',${c.id})">✏️</button>
-            <button class="ab" onclick="delR('compra',${c.id})">🗑</button>
-          </div></td>
-        </tr>`;
-      }).join('')}</tbody></table></div>`:''}
-    ${archivados.length?`<div class="stitle" style="color:var(--dim)">Archivadas · Entregadas/Bajas (${archivados.length})</div>
-      <div class="tw"><table>
-      <thead><tr><th>Descripción</th><th>Tipo</th><th>Estado</th><th>N° OC</th><th>Fecha</th><th></th></tr></thead>
-      <tbody>${archivados.map(c=>`<tr style="opacity:.6">
-        <td style="font-size:.7rem;max-width:140px">${es(c.descripcion)}</td>
-        <td><span class="pill ppu">OC</span></td>
-        <td>${pill(c.estadoOC,'oc')}</td>
-        <td style="font-size:.64rem">${es(c.nroc||'—')}</td>
-        <td style="font-size:.63rem">${c.fecha||'—'}</td>
-        <td><div class="arow"><button class="ab" onclick="delR('compra',${c.id})">🗑</button></div></td>
-      </tr>`).join('')}</tbody></table></div>`:''}`;
+    ${activas.map(c=>renderCompraCard(c)).join('')}
+    ${archivadas.length?`
+      <details style="margin-top:.4rem">
+        <summary style="font-size:.72rem;font-weight:700;color:var(--dim);cursor:pointer;padding:.3rem 0">
+          📁 Archivadas / Entregadas (${archivadas.length})
+        </summary>
+        <div style="margin-top:.3rem">
+          ${archivadas.map(c=>renderCompraCard(c)).join('')}
+        </div>
+      </details>`:''}`;
 }
+
 
 // ── ÓRDENES ──
 async function modOr(tc){
