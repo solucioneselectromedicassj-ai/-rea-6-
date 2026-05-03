@@ -409,6 +409,7 @@ td{padding:.4rem .52rem;vertical-align:middle}
         <div class="stitle">Datos locales</div>
         <div style="display:flex;gap:.42rem;flex-wrap:wrap">
           <button class="btn bgr" onclick="dbSt()">📊 Conteos</button>
+          <button class="btn bve" onclick="recuperarDatos()">🔍 Buscar y recuperar datos</button>
           <button class="btn bro2" onclick="clearAll()">🗑️ Borrar todo</button>
         </div>
         <div id="dbSC" style="margin-top:.45rem;font-size:.71rem;color:var(--dim)"></div>
@@ -541,35 +542,81 @@ async function boot(){
 // Auto-migrate from A6v5 if new DB is empty
 async function autoMigrate(){
   try{
+    // Si ya hay datos en la DB actual, no hacer nada
     const eqs=await getAll('equipos');
-    if(eqs.length>0)return; // already has data
-    // Try to read from old DB
-    const OLD_STORES=['equipos','expedientes','ordenes','actas','tareas','bajas','stock'];
-    const oldDb=await new Promise((ok,er)=>{
-      const r=indexedDB.open('A6v5',1);
+    if(eqs.length>0)return;
+    const OLD_STORES=['equipos','expedientes','ric58','ordenes','actas','tareas','compras','bajas','stock'];
+    // Buscar en todas las versiones anteriores posibles
+    const OLD_DBS=['A6v5','A6v4','A6v3','A6db','area6','AREA6'];
+    let migrated=0;
+    let sourceDb='';
+    for(const dbName of OLD_DBS){
+      if(migrated>0)break;
+      const oldDb=await new Promise(ok=>{
+        const r=indexedDB.open(dbName);
+        r.onsuccess=e=>ok(e.target.result);
+        r.onerror=()=>ok(null);
+        r.onblocked=()=>ok(null);
+        // Si no existe, onupgradeneeded se dispara — cerrar sin migrar
+        r.onupgradeneeded=e=>{e.target.transaction.abort();ok(null)};
+      });
+      if(!oldDb)continue;
+      for(const s of OLD_STORES){
+        try{
+          if(!oldDb.objectStoreNames.contains(s))continue;
+          const rows=await new Promise(ok=>{
+            const tx=oldDb.transaction(s,'readonly');
+            const req=tx.objectStore(s).getAll();
+            req.onsuccess=e=>ok(e.target.result||[]);
+            req.onerror=()=>ok([]);
+          });
+          if(rows.length){await bulkPut(s,rows);migrated+=rows.length}
+        }catch(e){}
+      }
+      if(migrated>0)sourceDb=dbName;
+      oldDb.close();
+    }
+    if(migrated>0){
+      await setMeta('migrated_from',sourceDb);
+      toast('✅ '+migrated+' registros recuperados de '+sourceDb,'ok');
+    }
+  }catch(e){console.warn('Migration skipped:',e.message)}
+}
+
+// Recuperación manual — busca en todas las DBs conocidas y muestra qué encontró
+async function buscarDatosAnteriores(){
+  const OLD_DBS=['A6v5','A6v4','A6v3','A6db','area6','AREA6','A6v6'];
+  const OLD_STORES=['equipos','expedientes','ric58','ordenes','actas','tareas','compras','bajas','stock'];
+  let resumen='';
+  let total=0;
+  for(const dbName of OLD_DBS){
+    const oldDb=await new Promise(ok=>{
+      const r=indexedDB.open(dbName);
       r.onsuccess=e=>ok(e.target.result);
       r.onerror=()=>ok(null);
       r.onblocked=()=>ok(null);
+      r.onupgradeneeded=e=>{e.target.transaction.abort();ok(null)};
     });
-    if(!oldDb)return;
-    let migrated=0;
+    if(!oldDb){resumen+=`\n${dbName}: no existe`;continue}
+    let dbTotal=0;
     for(const s of OLD_STORES){
       try{
+        if(!oldDb.objectStoreNames.contains(s))continue;
         const rows=await new Promise(ok=>{
           const tx=oldDb.transaction(s,'readonly');
           const req=tx.objectStore(s).getAll();
           req.onsuccess=e=>ok(e.target.result||[]);
           req.onerror=()=>ok([]);
         });
-        if(rows.length){await bulkPut(s,rows);migrated+=rows.length}
+        if(rows.length)dbTotal+=rows.length;
       }catch(e){}
     }
+    resumen+=`\n${dbName}: ${dbTotal} registros`;
+    total+=dbTotal;
     oldDb.close();
-    if(migrated>0){
-      await setMeta('migrated_from','A6v5');
-      toast('✅ '+migrated+' registros recuperados automáticamente','ok');
-    }
-  }catch(e){console.warn('Migration skipped:',e.message)}
+  }
+  alert('Búsqueda de datos:\n'+resumen+'\n\nTotal encontrado: '+total);
+  return resumen;
 }
 function showLoad(m=''){g('loadScr').style.display='flex';g('loadMsg').textContent=m}
 function hideLoad(){g('loadScr').style.display='none'}
@@ -2409,6 +2456,24 @@ function cancelPrev(){pending={};g('prev').style.display='none'}
 async function dbSt(){
   const cnts=await Promise.all(['equipos','expedientes','ric58','ordenes','actas','tareas','compras','bajas','stock'].map(async s=>{const r=await getAll(s);return`<b>${s}</b>:${r.length}`}));
   g('dbSC').innerHTML=cnts.join(' · ');
+}
+async function recuperarDatos(){
+  showLoad('Buscando datos anteriores...');
+  try{
+    // Primero mostrar qué hay
+    await buscarDatosAnteriores();
+    // Preguntar si migrar
+    const eqs=await getAll('equipos');
+    if(eqs.length>0){
+      toast('Ya hay datos en la DB actual ('+eqs.length+' equipos). Si querés re-importar, borrá todo primero.','wa');
+      hideLoad();return;
+    }
+    // Ejecutar migración
+    await autoMigrate();
+    await renderHome();
+    toast('Recuperación completada','ok');
+  }catch(e){toast('Error: '+e.message,'er')}
+  finally{hideLoad()}
 }
 function clearAll(){
   cfm2('⚠️ ¿Borrar TODOS los datos locales?\nNo se puede deshacer.',async()=>{
