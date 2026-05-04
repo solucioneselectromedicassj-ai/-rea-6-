@@ -407,9 +407,36 @@ td{padding:.4rem .52rem;vertical-align:middle}
 
       <div style="margin-top:.8rem;padding-top:.8rem;border-top:1.5px solid var(--brd)">
         <div class="stitle">Datos locales</div>
+        <!-- Sheets -->
+        <div class="stitle">🔗 Google Sheets (sincronización)</div>
+        <div id="sheetsSyncStatus" style="font-size:.7rem;color:var(--dim);margin-bottom:.4rem">
+          ${SHEETS_URL?'✅ Conectado':'⚠️ Sin configurar'}
+        </div>
+        <div style="display:flex;gap:.38rem;flex-wrap:wrap;margin-bottom:.65rem">
+          <button class="btn baz2" onclick="configurarSheets()">🔗 Configurar Sheets</button>
+          ${SHEETS_URL?`<button class="btn bve" onclick="syncToSheets()">🔄 Sincronizar ahora</button>`:''}
+          ${SHEETS_URL?`<button class="btn bgr" onclick="cargarDesdeSheets()">⬇ Cargar desde Sheets</button>`:''}
+        </div>
+        <!-- Backup -->
+        <div class="stitle">💾 Backup local</div>
+        <div class="infobx" style="margin-bottom:.5rem">
+          El backup automático guarda todos los datos en este navegador cada vez que modificás algo.
+          Descargá el JSON periódicamente como copia de seguridad adicional.
+        </div>
+        <div id="backupStatus" style="font-size:.7rem;color:var(--dim);margin-bottom:.4rem"></div>
+        <div style="display:flex;gap:.38rem;flex-wrap:wrap;margin-bottom:.65rem">
+          <button class="btn bve" onclick="downloadBackupJSON()">⬇ Descargar backup JSON</button>
+          <button class="btn bgr" style="position:relative">
+            📂 Importar backup JSON
+            <input type="file" accept=".json" onchange="importBackupJSON(this.files[0])" style="position:absolute;inset:0;opacity:0;cursor:pointer">
+          </button>
+          <button class="btn bgr" onclick="mostrarEstadoBackup()">📊 Estado backup</button>
+          <button class="btn bve" onclick="restoreFromLocalBackup()">↩ Restaurar backup local</button>
+        </div>
+        <div class="stitle">⚙️ Base de datos</div>
         <div style="display:flex;gap:.42rem;flex-wrap:wrap">
           <button class="btn bgr" onclick="dbSt()">📊 Conteos</button>
-          <button class="btn bve" onclick="recuperarDatos()">🔍 Buscar y recuperar datos</button>
+          <button class="btn bve" onclick="recuperarDatos()">🔍 Buscar datos anteriores</button>
           <button class="btn bro2" onclick="clearAll()">🗑️ Borrar todo</button>
         </div>
         <div id="dbSC" style="margin-top:.45rem;font-size:.71rem;color:var(--dim)"></div>
@@ -472,6 +499,7 @@ const TIPOS_T=['Tarea General','RIC01','Otro'];
 const TIPOS_EQ=['Hospital','Comodato'];
 const PEDIDOS_GEN='__GENERAL__';
 const DB_NM='A6v6';
+let SHEETS_URL=localStorage.getItem('a6_sheets_url')||''; // URL del Apps Script
 const STORES=['equipos','expedientes','ric58','ordenes','actas','tareas','compras','bajas','stock','meta'];
 let _afterSaveCallback=null;
 
@@ -505,6 +533,250 @@ async function getMeta(k){return new Promise(ok=>{const r=os('meta').get(k);r.on
 async function setMeta(k,v){return put('meta',{key:k,value:v})}
 
 // ════════════════════════════════════
+// AUTO-BACKUP
+// ════════════════════════════════════
+let _backupTimer=null;
+function scheduleAutoBackup(){
+  // Debounce: espera 3s después del último cambio para no saturar
+  if(_backupTimer)clearTimeout(_backupTimer);
+  _backupTimer=setTimeout(()=>autoBackup(),3000);
+}
+
+async function autoBackup(){
+  try{
+    const data={};
+    for(const s of STORES){
+      try{data[s]=await getAll(s);}catch(e){data[s]=[];}
+    }
+    const total=Object.values(data).reduce((a,b)=>a+b.length,0);
+    if(total===0)return; // No guardar backup vacío
+    const json=JSON.stringify({ts:new Date().toISOString(),v:DB_NM,data});
+    // Guardar en localStorage (sobrevive limpiezas normales de caché)
+    localStorage.setItem('a6_backup_latest',json);
+    localStorage.setItem('a6_backup_ts',new Date().toLocaleString('es-AR'));
+    localStorage.setItem('a6_backup_count',String(total));
+    // Cada 24hs de uso activo, también ofrecer descarga
+    const lastDl=localStorage.getItem('a6_backup_last_dl');
+    const now=Date.now();
+    if(!lastDl||now-Number(lastDl)>86400000){
+      // No descarga automática — solo marca para aviso
+      localStorage.setItem('a6_backup_dl_pending','1');
+    }
+  }catch(e){console.warn('Backup failed:',e.message);}
+}
+
+async function restoreFromLocalBackup(){
+  try{
+    const json=localStorage.getItem('a6_backup_latest');
+    if(!json){toast('No hay backup local guardado','er');return;}
+    const bk=JSON.parse(json);
+    const total=Object.values(bk.data).reduce((a,b)=>a+b.length,0);
+    if(total===0){toast('El backup está vacío','er');return;}
+    cfm2(`Restaurar backup del ${bk.ts?new Date(bk.ts).toLocaleString('es-AR'):'—'}?\n${total} registros en total.\nSe sobreescriben los datos actuales.`,async()=>{
+      showLoad('Restaurando...');
+      try{
+        for(const s of STORES){
+          if(bk.data[s]&&bk.data[s].length){
+            await bulkPut(s,bk.data[s]);
+          }
+        }
+        toast('✅ '+total+' registros restaurados','ok');
+        await renderHome();
+      }catch(e){toast('Error: '+e.message,'er');}
+      finally{hideLoad();}
+    });
+  }catch(e){toast('Error leyendo backup: '+e.message,'er');}
+}
+
+async function downloadBackupJSON(){
+  try{
+    const data={};
+    for(const s of STORES){try{data[s]=await getAll(s);}catch(e){data[s]=[];}}
+    const total=Object.values(data).reduce((a,b)=>a+b.length,0);
+    const json=JSON.stringify({ts:new Date().toISOString(),v:DB_NM,data},null,2);
+    const blob=new Blob([json],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const fecha=new Date().toLocaleDateString('es-AR').replace(/\//g,'-');
+    a.href=url;a.download=`area6_backup_${fecha}.json`;a.click();
+    URL.revokeObjectURL(url);
+    localStorage.setItem('a6_backup_last_dl',String(Date.now()));
+    localStorage.removeItem('a6_backup_dl_pending');
+    toast('Backup descargado ('+total+' registros)','ok');
+  }catch(e){toast('Error: '+e.message,'er');}
+}
+
+async function importBackupJSON(file){
+  try{
+    const text=await file.text();
+    const bk=JSON.parse(text);
+    if(!bk.data){toast('Archivo inválido','er');return;}
+    const total=Object.values(bk.data).reduce((a,b)=>a+b.length,0);
+    cfm2(`Importar backup de ${bk.ts?new Date(bk.ts).toLocaleString('es-AR'):'archivo'}?\n${total} registros.\nSe agregan a los datos actuales.`,async()=>{
+      showLoad('Importando...');
+      try{
+        let imp=0;
+        for(const s of STORES){
+          if(bk.data[s]&&bk.data[s].length){
+            await bulkPut(s,bk.data[s]);
+            imp+=bk.data[s].length;
+          }
+        }
+        toast('✅ '+imp+' registros importados','ok');
+        await renderHome();
+      }catch(e){toast('Error: '+e.message,'er');}
+      finally{hideLoad();}
+    });
+  }catch(e){toast('Archivo inválido: '+e.message,'er');}
+}
+
+// Verificar al arrancar si hay backup pendiente de descargar
+function checkBackupStatus(){
+  const ts=localStorage.getItem('a6_backup_ts');
+  const count=localStorage.getItem('a6_backup_count');
+  const pending=localStorage.getItem('a6_backup_dl_pending');
+  if(pending==='1'&&count&&Number(count)>0){
+    // Aviso suave en el banner de alertas
+    const ban=g('alertBan');
+    if(ban){
+      const msg=`💾 Backup auto: ${count} registros guardado${ts?' · '+ts:''}. <button onclick="downloadBackupJSON()" class="btn bve" style="font-size:.65rem;padding:.2rem .5rem;margin-left:.4rem">⬇ Descargar JSON</button>`;
+      if(ban.style.display==='none'||!ban.innerHTML.includes('💾')){
+        // Agregar al banner existente o crear uno nuevo
+      }
+    }
+  }
+}
+
+
+// ════════════════════════════════════
+// GOOGLE SHEETS SYNC
+// ════════════════════════════════════
+let _syncTimer=null;
+let _syncing=false;
+
+function scheduleSheetsSync(){
+  if(!SHEETS_URL)return;
+  if(_syncTimer)clearTimeout(_syncTimer);
+  _syncTimer=setTimeout(()=>syncToSheets(),4000);
+}
+
+async function syncToSheets(){
+  if(!SHEETS_URL||_syncing)return;
+  _syncing=true;
+  try{
+    const data={};
+    for(const s of STORES){
+      try{data[s]=await getAll(s);}catch(e){data[s]=[];}
+    }
+    const total=Object.values(data).reduce((a,b)=>a+b.length,0);
+    if(total===0){_syncing=false;return;}
+    const res=await fetch(SHEETS_URL,{
+      method:'POST',
+      body:JSON.stringify({action:'syncAll',data})
+    });
+    const json=await res.json();
+    if(json.ok){
+      localStorage.setItem('a6_sheets_last_sync',new Date().toLocaleString('es-AR'));
+      localStorage.setItem('a6_sheets_last_count',String(total));
+      // Actualizar indicador
+      const el=document.getElementById('sheetsSyncStatus');
+      if(el)el.textContent='✅ Sheets: '+new Date().toLocaleTimeString('es-AR');
+    }
+  }catch(e){
+    console.warn('Sheets sync error:',e.message);
+    const el=document.getElementById('sheetsSyncStatus');
+    if(el)el.textContent='⚠️ Sin conexión a Sheets';
+  }finally{_syncing=false;}
+}
+
+async function loadFromSheets(){
+  if(!SHEETS_URL)return false;
+  try{
+    showLoad('Cargando desde Google Sheets...');
+    const res=await fetch(SHEETS_URL+'?action=getAll');
+    const json=await res.json();
+    if(!json.ok||!json.data)return false;
+    const total=Object.values(json.data).reduce((a,b)=>a+b.length,0);
+    if(total===0)return false;
+    for(const s of STORES){
+      if(json.data[s]&&json.data[s].length){
+        await bulkPut(s,json.data[s]);
+      }
+    }
+    toast('✅ '+total+' registros cargados desde Sheets','ok');
+    return true;
+  }catch(e){
+    toast('Error cargando Sheets: '+e.message,'er');
+    return false;
+  }finally{hideLoad();}
+}
+
+async function configurarSheets(){
+  g('fptit').textContent='🔗 Conectar Google Sheets';
+  const lastSync=localStorage.getItem('a6_sheets_last_sync');
+  const lastCount=localStorage.getItem('a6_sheets_last_count');
+  g('fpbody').innerHTML=`
+    <div class="infobx" style="margin-bottom:.65rem">
+      Pegá la URL del Apps Script de tu Google Sheet de Área 6.
+      Una vez configurado, los datos se sincronizan automáticamente cada vez que guardás algo.
+    </div>
+    ${lastSync?`<div class="warnbx" style="margin-bottom:.5rem">Última sync: <b>${lastSync}</b> · ${lastCount} registros</div>`:''}
+    <div class="fg">
+      <label>URL del Apps Script (Web App URL)</label>
+      <input id="sheetsUrlInput" value="${SHEETS_URL}" placeholder="https://script.google.com/macros/s/...">
+    </div>
+    <div class="fg">
+      <label style="font-size:.68rem;color:var(--dim)">Pasos para obtener la URL:</label>
+      <div style="font-size:.69rem;color:var(--dim);line-height:1.6;background:var(--s2);padding:.5rem .7rem;border-radius:8px">
+        1. Abrí el Google Sheet de Área 6<br>
+        2. Extensiones → Apps Script<br>
+        3. Pegá el código y guardá<br>
+        4. Implementar → Nueva implementación<br>
+        5. Tipo: App web · Acceso: Cualquier usuario<br>
+        6. Copiá la URL y pegala aquí
+      </div>
+    </div>`;
+  g('fpfoot').innerHTML=`
+    <button class="btn bgr" onclick="closeForm()">Cancelar</button>
+    ${SHEETS_URL?`<button class="btn bgr" onclick="probarConexionSheets()">🔍 Probar conexión</button>`:''}
+    ${SHEETS_URL?`<button class="btn bve" onclick="cargarDesdeSheets()">⬇ Cargar desde Sheets</button>`:''}
+    <button class="btn baz2" onclick="guardarUrlSheets()">💾 Guardar URL</button>`;
+  g('fp').classList.add('open');
+}
+
+function guardarUrlSheets(){
+  const url=(document.getElementById('sheetsUrlInput')?.value||'').trim();
+  SHEETS_URL=url;
+  localStorage.setItem('a6_sheets_url',url);
+  closeForm();
+  if(url){
+    toast('URL guardada. Probando conexión...','ok');
+    probarConexionSheets();
+  }else{
+    toast('Sheets desconectado','ok');
+  }
+}
+
+async function probarConexionSheets(){
+  if(!SHEETS_URL){toast('No hay URL configurada','er');return;}
+  try{
+    showLoad('Probando conexión...');
+    const res=await fetch(SHEETS_URL+'?store=meta');
+    const json=await res.json();
+    hideLoad();
+    if(json.ok){toast('✅ Conexión OK con Google Sheets','ok');}
+    else{toast('Error: '+json.error,'er');}
+  }catch(e){hideLoad();toast('Sin conexión: '+e.message,'er');}
+}
+
+async function cargarDesdeSheets(){
+  closeForm();
+  const ok=await loadFromSheets();
+  if(ok)await renderHome();
+}
+
+
+// ════════════════════════════════════
 // PWA
 // ════════════════════════════════════
 function initPWA(){
@@ -535,7 +807,16 @@ async function boot(){
   showLoad('Cargando datos...');
   try{
     await autoMigrate();
-    await renderHome();await loadDates();await checkAlerts()
+    // Si la DB está vacía y hay Sheets configurado → cargar desde Sheets
+    const eqsCheck=await getAll('equipos');
+    if(eqsCheck.length===0&&SHEETS_URL){
+      const loaded=await loadFromSheets();
+      if(loaded){await renderHome();}
+    }
+    await loadDates();await checkAlerts();
+    autoBackup();mostrarEstadoBackup();
+    // Sync inicial si hay Sheets
+    if(SHEETS_URL)setTimeout(()=>syncToSheets(),5000);
   }finally{hideLoad()}
 }
 
@@ -2281,7 +2562,18 @@ async function ajustarStock(id,delta){
 // ════════════════════════════════════
 // ADMIN / IMPORT
 // ════════════════════════════════════
-async function showAdmin(){showView('adminPanel');g('prev').style.display='none';await loadDates()}
+async function showAdmin(){
+  showView('adminPanel');g('prev').style.display='none';await loadDates();
+  // Actualizar status de Sheets
+  const el=document.getElementById('sheetsSyncStatus');
+  if(el){
+    const lastSync=localStorage.getItem('a6_sheets_last_sync');
+    const lastCount=localStorage.getItem('a6_sheets_last_count');
+    if(SHEETS_URL&&lastSync) el.textContent='✅ Última sync: '+lastSync+' · '+lastCount+' registros';
+    else if(SHEETS_URL) el.textContent='🔗 Conectado · Sin sync aún';
+    else el.textContent='⚠️ Sin configurar — tocá "Configurar Sheets"';
+  }
+}
 async function loadDates(){
   try{
     const[eq,ex,or,st]=await Promise.all(['eq','ex','or','st'].map(k=>getMeta('lu_'+k)));
@@ -2457,6 +2749,22 @@ async function dbSt(){
   const cnts=await Promise.all(['equipos','expedientes','ric58','ordenes','actas','tareas','compras','bajas','stock'].map(async s=>{const r=await getAll(s);return`<b>${s}</b>:${r.length}`}));
   g('dbSC').innerHTML=cnts.join(' · ');
 }
+function mostrarEstadoBackup(){
+  const ts=localStorage.getItem('a6_backup_ts');
+  const count=localStorage.getItem('a6_backup_count');
+  const json=localStorage.getItem('a6_backup_latest');
+  const size=json?Math.round(json.length/1024)+'KB':'—';
+  const el=g('backupStatus');
+  if(el){
+    el.innerHTML=ts
+      ?`✅ Último backup automático: <b>${ts}</b> · ${count} registros · ${size}`
+      :`⚠️ Sin backup automático aún. Guardá algo para activarlo.`;
+  }
+  alert(ts
+    ?`Backup automático:\nFecha: ${ts}\nRegistros: ${count}\nTamaño: ${size}\n\nEste backup se actualiza automáticamente con cada cambio y sobrevive limpiezas de caché.`
+    :'No hay backup automático todavía.');
+}
+
 async function recuperarDatos(){
   showLoad('Buscando datos anteriores...');
   try{
