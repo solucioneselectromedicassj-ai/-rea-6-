@@ -807,15 +807,31 @@ async function boot(){
   showLoad('Cargando datos...');
   try{
     await autoMigrate();
-    // Si la DB está vacía y hay Sheets configurado → cargar desde Sheets
+    // Si la DB está vacía intentar recuperar: primero backup local, luego Sheets
     const eqsCheck=await getAll('equipos');
-    if(eqsCheck.length===0&&SHEETS_URL){
-      const loaded=await loadFromSheets();
-      if(loaded){await renderHome();}
+    if(eqsCheck.length===0){
+      // Intentar restaurar desde backup local (localStorage)
+      const localBk=localStorage.getItem('a6_backup_latest');
+      if(localBk){
+        try{
+          const bk=JSON.parse(localBk);
+          const total=Object.values(bk.data||{}).reduce((a,b)=>a+b.length,0);
+          if(total>0){
+            for(const s of STORES){
+              if(bk.data[s]&&bk.data[s].length) await bulkPut(s,bk.data[s]);
+            }
+            toast('✅ Datos restaurados desde backup local ('+total+' registros)','ok');
+          }
+        }catch(e){console.warn('Backup restore failed:',e);}
+      } else if(SHEETS_URL){
+        await loadFromSheets();
+      }
     }
+    // SIEMPRE renderizar el home
+    await renderHome();
     await loadDates();await checkAlerts();
-    autoBackup();mostrarEstadoBackup();
-    // Sync inicial si hay Sheets
+    // Backup silencioso — sin alert
+    autoBackup();
     if(SHEETS_URL)setTimeout(()=>syncToSheets(),5000);
   }finally{hideLoad()}
 }
@@ -2757,12 +2773,10 @@ function mostrarEstadoBackup(){
   const el=g('backupStatus');
   if(el){
     el.innerHTML=ts
-      ?`✅ Último backup automático: <b>${ts}</b> · ${count} registros · ${size}`
-      :`⚠️ Sin backup automático aún. Guardá algo para activarlo.`;
+      ?`✅ Backup automático: <b>${ts}</b> · ${count} registros · ${size}`
+      :`⚠️ Sin backup aún. Se activará al guardar algo.`;
   }
-  alert(ts
-    ?`Backup automático:\nFecha: ${ts}\nRegistros: ${count}\nTamaño: ${size}\n\nEste backup se actualiza automáticamente con cada cambio y sobrevive limpiezas de caché.`
-    :'No hay backup automático todavía.');
+  // Sin alert() — solo actualiza el elemento en pantalla
 }
 
 async function recuperarDatos(){
