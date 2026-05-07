@@ -487,7 +487,7 @@ const SRVS=[
 ];
 const GASTRO=['GASTROENTEROLOGIA','ENDOSCOPIA','ENDOSCOPÍA','GASTROENTEROLOGÍA'];
 const EST_EQ=['En Servicio','Rep. en Fabrica','En Deposito IC','Esp. Repuestos','Fuera de Servicio'];
-const EST_EX=['Iniciado','En Trámite','Aprobado','Entregado','Archivado','Rechazado'];
+const EST_EX=['Iniciado','En Trámite','Aceptado','Adjudicado','Entregado','Rechazado','De Baja','Pasa ejercicio siguiente','Archivado'];
 const EST_RIC58=['Enviado','Negado','Convertido a Expediente'];
 const EST_OR=['Iniciada','En Proceso','Completada','Cancelada'];
 const EST_ACTA=['Abierta','Equipo enviado','En reparación','Esperando repuestos','Equipo regresó','Cerrada'];
@@ -968,6 +968,180 @@ function renderCompraCard(c, afterSaveFn='refreshView'){
   </div>`;
 }
 // ════════════════════════════════════
+// BUSCADOR GENERAL DE EQUIPOS
+// ════════════════════════════════════
+async function showBuscadorEquipos(){
+  showView('globalView');
+  curSrv=null;curSubSrv=null;curMod=null;
+  const mainEl=g('main');if(mainEl)mainEl.scrollTop=0;
+  const el=g('globalContent');
+  el.innerHTML='<div style="color:var(--dim);font-size:.78rem;padding:.4rem">Cargando...</div>';
+  try{
+    const todos=await getAll('equipos');
+    const hoy=today();
+    // Obtener servicios únicos
+    const srvs=[...new Set(todos.map(e=>e.servicio||'Sin servicio'))].sort();
+    let filtroSrv=srvs; // todos por defecto
+    let filtroTexto='';
+    let filtroEstado='';
+
+    const render=()=>{
+      let rows=todos.filter(e=>{
+        const srv=e.servicio||'Sin servicio';
+        if(!filtroSrv.includes(srv))return false;
+        if(filtroEstado&&e.estado!==filtroEstado)return false;
+        if(filtroTexto){
+          const q=filtroTexto.toLowerCase();
+          return (e.descrip||'').toLowerCase().includes(q)||
+            (e.serie||'').toLowerCase().includes(q)||
+            (e.marca||'').toLowerCase().includes(q);
+        }
+        return true;
+      });
+      rows.sort((a,b)=>{
+        const da=diff(hoy,toD(a.proximoMant)),db=diff(hoy,toD(b.proximoMant));
+        if(da===null&&db===null)return 0;if(da===null)return 1;if(db===null)return -1;return da-db;
+      });
+      const venc=rows.filter(e=>{const d=diff(hoy,toD(e.proximoMant));return d!==null&&d<0;});
+      const prox=rows.filter(e=>{const d=diff(hoy,toD(e.proximoMant));return d!==null&&d>=0&&d<30;});
+      document.getElementById('buscResumen').textContent=
+        `${rows.length} equipos · ${venc.length} vencidos · ${prox.length} próximos`;
+      const cont=document.getElementById('buscResultados');
+      if(!rows.length){cont.innerHTML=`<div class="emp"><div class="ei">🔍</div>Sin resultados</div>`;return;}
+      cont.innerHTML=rows.map(e=>{
+        const pd=toD(e.proximoMant),d=diff(hoy,pd);
+        const deBaja=e.estado==='De Baja';
+        const vencido=d!==null&&d<0;
+        const proximo=d!==null&&d>=0&&d<30;
+        const sc=deBaja?'var(--dim)':vencido?'var(--ro)':proximo?'var(--na)':'var(--ve2)';
+        return`<div onclick="verEquipo(${e.id})" style="background:var(--s1);border:1.5px solid var(--brd);border-left:4px solid ${sc};
+          border-radius:10px;padding:.55rem .7rem;margin-bottom:.3rem;box-shadow:var(--sh);cursor:pointer;opacity:${deBaja?.55:1}">
+          <div style="font-size:.74rem;font-weight:700;${deBaja?'text-decoration:line-through;color:var(--dim)':''}">${es(e.descrip)}</div>
+          <div style="font-size:.62rem;color:var(--dim);margin-top:.1rem">${es(e.marca)||'—'} · ${es(e.serie)||'—'}</div>
+          <div style="display:flex;gap:.25rem;flex-wrap:wrap;margin-top:.18rem;align-items:center">
+            <span style="font-size:.6rem;color:var(--az);font-weight:600">${es(e.servicio||'—')}</span>
+            ${e.subServicio?`<span style="font-size:.58rem;color:var(--dim)">· ${es(e.subServicio)}</span>`:''}
+            <span style="font-size:.6rem;font-weight:700;color:${sc}">${deBaja?'De Baja':vencido?'⚠ Venc.':proximo?'⏰ Próx.':'✓ OK'}</span>
+            ${d!==null&&!deBaja?`<span style="font-size:.58rem;color:var(--dim)">${Math.abs(d)}d</span>`:''}
+          </div>
+        </div>`;
+      }).join('');
+    };
+
+    el.innerHTML=`
+      <button class="volver" onclick="goHome()">← Inicio</button>
+      <div class="sectit"><span>🔍</span> Buscador General de Equipos</div>
+      <div style="background:var(--s1);border:1.5px solid var(--brd);border-radius:10px;padding:.6rem .7rem;margin-bottom:.5rem;box-shadow:var(--sh)">
+        <input id="buscTexto" class="fi" type="text" placeholder="🔍 Buscar por nombre, serie, marca..." 
+          style="margin-bottom:.4rem" oninput="document.getElementById('buscTexto')._v=this.value;_buscRender()">
+        <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.4rem">
+          <select id="buscEstado" class="fi" style="flex:1;min-width:110px;font-size:.74rem" onchange="_buscRender()">
+            <option value="">Todos los estados</option>
+            ${EST_EQ.map(s=>`<option>${s}</option>`).join('')}
+            <option>De Baja</option>
+          </select>
+        </div>
+        <div class="stitle" style="margin-bottom:.3rem">Filtrar servicios:</div>
+        <div style="display:flex;gap:.25rem;flex-wrap:wrap;margin-bottom:.35rem">
+          <button class="btn bgr" style="font-size:.65rem;padding:.22rem .5rem" onclick="_buscSelAll()">✓ Todos</button>
+          <button class="btn bgr" style="font-size:.65rem;padding:.22rem .5rem" onclick="_buscSelNone()">✗ Ninguno</button>
+        </div>
+        <div id="buscSrvChk" style="display:flex;gap:.25rem;flex-wrap:wrap">
+          ${srvs.map(s=>`<label style="display:flex;align-items:center;gap:.2rem;font-size:.65rem;cursor:pointer;background:var(--az3);border-radius:20px;padding:.18rem .5rem;border:1px solid var(--az)">
+            <input type="checkbox" checked data-srv="${s}" onchange="_buscRender()" style="accent-color:var(--az)"> ${s}
+          </label>`).join('')}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.35rem">
+        <span id="buscResumen" style="font-size:.7rem;color:var(--dim)">Cargando...</span>
+        <button class="btn bve" style="font-size:.7rem" onclick="_exportBuscador()">📥 Exportar Excel</button>
+      </div>
+      <div id="buscResultados"></div>`;
+
+    // Guardar referencia a datos para export
+    window._buscTodos=todos;
+    window._buscHoy=hoy;
+    window._buscRender=()=>{
+      filtroTexto=document.getElementById('buscTexto')?.value||'';
+      filtroEstado=document.getElementById('buscEstado')?.value||'';
+      filtroSrv=[...document.querySelectorAll('#buscSrvChk input[type=checkbox]:checked')].map(c=>c.dataset.srv);
+      render();
+    };
+    window._buscSelAll=()=>{
+      document.querySelectorAll('#buscSrvChk input').forEach(c=>c.checked=true);
+      window._buscRender();
+    };
+    window._buscSelNone=()=>{
+      document.querySelectorAll('#buscSrvChk input').forEach(c=>c.checked=false);
+      window._buscRender();
+    };
+    window._exportBuscador=()=>{
+      const rows=window._buscTodos.filter(e=>{
+        const srv=e.servicio||'Sin servicio';
+        const chks=[...document.querySelectorAll('#buscSrvChk input[type=checkbox]:checked')].map(c=>c.dataset.srv);
+        if(!chks.includes(srv))return false;
+        const est=document.getElementById('buscEstado')?.value||'';
+        if(est&&e.estado!==est)return false;
+        const q=(document.getElementById('buscTexto')?.value||'').toLowerCase();
+        if(q)return (e.descrip||'').toLowerCase().includes(q)||(e.serie||'').toLowerCase().includes(q)||(e.marca||'').toLowerCase().includes(q);
+        return true;
+      });
+      const wb=XLSX.utils.book_new();
+      const data=[
+        ['Servicio','Sub-servicio','Equipo','Marca','Serie','Estado','Último Mant.','Próx. Mant.','Tipo'],
+        ...rows.map(e=>[e.servicio||'',e.subServicio||'',e.descrip||'',e.marca||'',e.serie||'',e.estado||'',e.ultimoMant||'',e.proximoMant||'',e.tipoEq||'Hospital'])
+      ];
+      const ws=XLSX.utils.aoa_to_sheet(data);
+      ws['!cols']=data[0].map(()=>({wch:22}));
+      XLSX.utils.book_append_sheet(wb,ws,'Equipos');
+      const fecha=new Date().toLocaleDateString('es-AR').replace(/\//g,'-');
+      XLSX.writeFile(wb,'area6_equipos_'+fecha+'.xlsx');
+      toast('Excel exportado ('+rows.length+' equipos)','ok');
+    };
+    render();
+  }catch(e){el.innerHTML=`<div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div>`}
+}
+
+// ════════════════════════════════════
+// COMPARACIÓN SKINET AL IMPORTAR
+// ════════════════════════════════════
+async function compararConSkinet(nuevosExps){
+  // nuevosExps: array de expedientes del Excel recién importado
+  const actuales=await getAll('expedientes');
+  const actualizados=[];
+  const nuevos=[];
+  for(const nw of nuevosExps){
+    if(!nw.numero)continue;
+    const exist=actuales.find(a=>String(a.numero).trim()===String(nw.numero).trim());
+    if(exist){
+      // Comparar: si el estado o fecha cambió en SKINET → actualizar aunque esté archivado
+      const cambioEstado=nw.estado&&nw.estado!==exist.estado;
+      const cambioFecha=nw.fechaInicio&&nw.fechaInicio!==exist.fechaInicio;
+      if(cambioEstado||cambioFecha){
+        const updated={...exist};
+        if(cambioEstado)updated.estado=nw.estado;
+        if(cambioFecha)updated.fechaInicio=nw.fechaInicio;
+        if(nw.descripcion&&nw.descripcion.length>5)updated.descripcion=nw.descripcion;
+        updated.mod=new Date().toLocaleDateString('es-AR');
+        updated.actualizadoSkinet=true;
+        await put('expedientes',updated);
+        actualizados.push({numero:nw.numero,cambio:cambioEstado?'Estado: '+exist.estado+' → '+nw.estado:'Fecha actualizada'});
+      }
+    } else {
+      // Expediente nuevo que no está en la app
+      const id=Date.now()+Math.random();
+      await put('expedientes',{id,numero:nw.numero,descripcion:nw.descripcion||'',
+        servicio:nw.servicio||'',estado:nw.estado||'Iniciado',
+        fechaInicio:nw.fechaInicio||new Date().toLocaleDateString('es-AR'),
+        usuario:'SKINET Import',mod:new Date().toLocaleDateString('es-AR')});
+      nuevos.push(nw.numero);
+    }
+  }
+  return {actualizados,nuevos};
+}
+
+
+// ════════════════════════════════════
 // HOME — Tablero de Control Principal
 // ════════════════════════════════════
 async function renderHome(){
@@ -1071,6 +1245,18 @@ async function renderHome(){
         <div style="display:flex;gap:.25rem;flex-wrap:wrap">
           <span class="bx baz">${actAbiertas.length} abiertas</span>
           ${actVencidas.length?`<span class="bx bna">⏰ ${actVencidas.length} +30d</span>`:''}
+        </div>
+      </div>
+
+      <!-- BUSCADOR GLOBAL -->
+      <div onclick="showBuscadorEquipos()" style="
+        background:var(--s1);border:1.5px solid var(--brd);
+        border-top:4px solid var(--cy);
+        border-radius:var(--r);padding:.9rem .75rem;cursor:pointer;box-shadow:var(--sh)">
+        <div style="font-size:1.6rem;margin-bottom:.3rem">🔍</div>
+        <div style="font-size:.78rem;font-weight:700;margin-bottom:.35rem">Buscador General</div>
+        <div style="display:flex;gap:.25rem;flex-wrap:wrap">
+          <span class="bx baz">Equipos · todos los servicios</span>
         </div>
       </div>
 
@@ -1212,32 +1398,38 @@ async function showHomeExpedientes(){
     const ricNeg=ricActivos.filter(r=>r.estado==='Negado');
 
     // Card de expediente — tappeable igual que equipos
+    const ARCH_EST=['Entregado','Rechazado','De Baja','Pasa ejercicio siguiente','Archivado'];
+    const ACT_EST=EST_EX.filter(s=>!ARCH_EST.includes(s));
+    const stColorEx=(est)=>est==='Entregado'||est==='Aceptado'||est==='Adjudicado'?'var(--ve2)':
+      est==='En Trámite'?'var(--az)':est==='Rechazado'||est==='De Baja'?'var(--ro)':
+      est==='Archivado'||est==='Pasa ejercicio siguiente'?'var(--dim)':'var(--na)';
     const expCard=(e)=>{
       const fi=toD(e.fechaInicio),d=diff(fi,hoy);
       const est=e.estado||'Iniciado';
-      const estIdx=EST_EX.filter(s=>s!=='Archivado'&&s!=='Rechazado').indexOf(est);
-      const nextEst=EST_EX.filter(s=>s!=='Archivado'&&s!=='Rechazado')[(estIdx+1)%EST_EX.filter(s=>s!=='Archivado'&&s!=='Rechazado').length];
-      const stColor=est==='Entregado'?'var(--ve2)':est==='Aprobado'?'#059669':est==='En Trámite'?'var(--az)':est==='Rechazado'?'var(--ro)':'var(--na)';
-      const archivable=est==='Entregado'||est==='Rechazado';
-      return`<div onclick="verExpediente(${e.id})" style="background:var(--s1);border:1.5px solid var(--brd);border-left:4px solid ${stColor};
-        border-radius:10px;padding:.65rem .75rem;margin-bottom:.38rem;box-shadow:var(--sh);cursor:pointer;-webkit-tap-highlight-color:transparent">
+      const archivado=ARCH_EST.includes(est);
+      const sc=stColorEx(est);
+      const idxAct=ACT_EST.indexOf(est);
+      const nextEst=idxAct>=0?ACT_EST[(idxAct+1)%ACT_EST.length]:null;
+      return`<div onclick="verExpediente(${e.id})" style="background:var(--s1);border:1.5px solid ${archivado?'var(--brd)':'var(--brd)'};border-left:4px solid ${sc};
+        border-radius:10px;padding:.65rem .75rem;margin-bottom:.38rem;box-shadow:var(--sh);cursor:pointer;-webkit-tap-highlight-color:transparent;opacity:${archivado?.6:1}">
         <div style="display:flex;align-items:flex-start;gap:.5rem">
           <div style="flex:1;min-width:0">
             <div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center;margin-bottom:.2rem">
               <span style="font-size:.8rem;font-weight:700;color:var(--az)">Exp. ${es(e.numero)}</span>
-              <span style="font-size:.65rem;font-weight:700;color:${stColor};background:${stColor}18;border:1px solid ${stColor}55;border-radius:20px;padding:.1rem .42rem">${est}</span>
+              <span style="font-size:.65rem;font-weight:700;color:${sc};background:${sc}18;border:1px solid ${sc}55;border-radius:20px;padding:.1rem .42rem">${est}</span>
             </div>
-            <div style="font-size:.73rem;line-height:1.4;margin-bottom:.22rem">${es(e.descripcion)}</div>
+            <div style="font-size:.73rem;line-height:1.35;margin-bottom:.18rem">${es(e.descripcion)}</div>
             <div style="font-size:.62rem;color:var(--dim)">
               ${e.servicio?`<span style="color:var(--az)">${es(e.servicio)}</span> · `:''}
-              Inicio: ${fd(fi)||'—'} · <b style="color:var(--cy)">${d!==null?d+'d':''}</b>
+              ${fd(fi)||'—'} · <b style="color:var(--cy)">${d!==null?d+'d':''}</b>
               ${e.responsable?` · 👤 ${es(e.responsable)}`:''}
             </div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:.3rem;flex-shrink:0" onclick="event.stopPropagation()">
-            <button style="background:var(--az3);color:var(--az);border:1.5px solid var(--az);border-radius:8px;padding:.35rem .55rem;font-size:.82rem;font-weight:700;cursor:pointer;min-width:36px" onclick="avanzarEstadoEx(${e.id},'${nextEst}')" title="Avanzar a: ${nextEst}">→</button>
-            <button style="background:var(--s2);border:1.5px solid var(--brd);border-radius:8px;padding:.35rem .5rem;font-size:.78rem;cursor:pointer;min-width:36px" onclick="curSrv=null;editR('expediente',${e.id})" title="Editar">✏️</button>
-            ${archivable?`<button style="background:var(--veli);color:var(--ve2);border:1.5px solid var(--veba);border-radius:8px;padding:.35rem .5rem;font-size:.78rem;cursor:pointer;min-width:36px" onclick="archivarExG(${e.id})" title="Archivar">🗃</button>`:''}
+          <div style="display:flex;flex-direction:column;gap:.25rem;flex-shrink:0" onclick="event.stopPropagation()">
+            ${nextEst?`<button style="background:var(--az3);color:var(--az);border:1.5px solid var(--az);border-radius:8px;padding:.32rem .5rem;font-size:.8rem;font-weight:700;cursor:pointer;min-width:34px" onclick="avanzarEstadoEx(${e.id},'${nextEst}')" title="→ ${nextEst}">→</button>`:''}
+            <button style="background:var(--s2);border:1.5px solid var(--brd);border-radius:8px;padding:.32rem .45rem;font-size:.76rem;cursor:pointer;min-width:34px" onclick="curSrv=null;editR('expediente',${e.id})" title="Editar">✏️</button>
+            ${!archivado?`<button style="background:var(--veli);color:var(--ve2);border:1.5px solid var(--veba);border-radius:8px;padding:.32rem .45rem;font-size:.76rem;cursor:pointer;min-width:34px" onclick="archivarExG(${e.id})" title="Archivar">🗃</button>`
+            :`<button style="background:var(--s2);border:1.5px solid var(--brd);border-radius:8px;padding:.32rem .45rem;font-size:.76rem;cursor:pointer" onclick="reabrirExG(${e.id})" title="Reabrir">↩</button>`}
           </div>
         </div>
       </div>`;
@@ -1384,37 +1576,49 @@ async function verExpediente(id){
   const hoy=today();
   const fi=toD(e.fechaInicio),d=diff(fi,hoy);
   const est=e.estado||'Iniciado';
-  const stColor=est==='Entregado'?'var(--ve2)':est==='Aprobado'?'#059669':est==='En Trámite'?'var(--az)':est==='Rechazado'?'var(--ro)':'var(--na)';
-  const estados=EST_EX.filter(s=>s!=='Archivado'&&s!=='Rechazado');
-  const archivable=est==='Entregado'||est==='Rechazado';
-  g('fptit').innerHTML=`📁 Exp. ${es(e.numero)}`;
+  const ARCH_EST=['Entregado','Rechazado','De Baja','Pasa ejercicio siguiente','Archivado'];
+  const ACT_EST=EST_EX.filter(s=>!ARCH_EST.includes(s));
+  const archivado=ARCH_EST.includes(est);
+  const stColorFn=(s)=>s==='Entregado'||s==='Aceptado'||s==='Adjudicado'?'var(--ve2)':
+    s==='En Trámite'?'var(--az)':s==='Rechazado'||s==='De Baja'?'var(--ro)':
+    s==='Archivado'||s==='Pasa ejercicio siguiente'?'var(--dim)':'var(--na)';
+  const sc=stColorFn(est);
+  g('fptit').innerHTML='📁 Exp. '+es(e.numero);
   g('fpbody').innerHTML=`
-    <div style="background:${stColor}18;border:1.5px solid ${stColor}55;border-radius:9px;padding:.5rem .75rem;margin-bottom:.65rem;display:flex;align-items:center;gap:.5rem">
+    <div style="background:${sc}18;border:1.5px solid ${sc}55;border-radius:9px;padding:.5rem .75rem;margin-bottom:.6rem;display:flex;align-items:center;gap:.5rem">
       <div style="font-size:1.2rem">📁</div>
       <div>
-        <div style="font-size:.78rem;font-weight:700;color:${stColor}">${est}</div>
+        <div style="font-size:.78rem;font-weight:700;color:${sc}">${est}</div>
         <div style="font-size:.64rem;color:var(--dim)">${d!==null?d+'d desde inicio':''}</div>
       </div>
     </div>
-    <div style="font-size:.78rem;line-height:1.5;margin-bottom:.6rem">${es(e.descripcion)}</div>
+    <div style="font-size:.78rem;line-height:1.5;margin-bottom:.55rem;font-weight:500">${es(e.descripcion)}</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:.35rem .6rem;font-size:.72rem;margin-bottom:.6rem">
       <div><span style="color:var(--dim);font-size:.63rem;display:block">Servicio</span><b>${es(e.servicio||'—')}</b></div>
       <div><span style="color:var(--dim);font-size:.63rem;display:block">Sub-servicio</span><b>${es(e.subServicio||'—')}</b></div>
       <div><span style="color:var(--dim);font-size:.63rem;display:block">Fecha inicio</span><b>${fd(fi)||'—'}</b></div>
       <div><span style="color:var(--dim);font-size:.63rem;display:block">Responsable</span><b>${es(e.responsable||'—')}</b></div>
       ${e.origenRic58?`<div style="grid-column:1/-1"><span style="color:var(--dim);font-size:.63rem;display:block">Origen RIC-58</span><b>${es(e.origenRic58)}</b></div>`:''}
+      ${e.observaciones?`<div style="grid-column:1/-1"><span style="color:var(--dim);font-size:.63rem;display:block">Observaciones</span><b>${es(e.observaciones)}</b></div>`:''}
     </div>
     <div class="stitle">Cambiar estado</div>
-    <div style="display:flex;gap:.28rem;flex-wrap:wrap;margin-bottom:.2rem">
-      ${estados.map(s=>`<button onclick="avanzarEstadoEx(${e.id},'${s}');closeForm()" style="background:${s===est?stColor:'var(--s2)'};color:${s===est?'#fff':'var(--txt)'};border:1.5px solid ${s===est?stColor:'var(--brd)'};border-radius:20px;padding:.22rem .6rem;font-size:.7rem;cursor:pointer;font-weight:${s===est?'700':'400'}">${s}</button>`).join('')}
+    <div style="display:flex;gap:.25rem;flex-wrap:wrap;margin-bottom:.2rem">
+      ${EST_EX.map(s=>`<button onclick="avanzarEstadoEx(${e.id},'${s}');closeForm()" 
+        style="background:${s===est?sc:'var(--s2)'};color:${s===est?'#fff':'var(--txt)'};
+        border:1.5px solid ${s===est?sc:'var(--brd)'};border-radius:20px;padding:.22rem .55rem;
+        font-size:.68rem;cursor:pointer;font-weight:${s===est?'700':'400'}">${s}</button>`).join('')}
     </div>`;
   g('fpfoot').innerHTML=`
     <button class="btn bgr" onclick="closeForm()">Cerrar</button>
     <button class="btn baz2" onclick="closeForm();curSrv=null;editR('expediente',${e.id})">✏️ Editar</button>
-    ${archivable?`<button class="btn" style="background:var(--veli);color:var(--ve2);border:1.5px solid var(--veba)" onclick="closeForm();archivarExG(${e.id})">🗃 Archivar</button>`:''}`;
+    ${!archivado
+      ?`<button class="btn" style="background:var(--veli);color:var(--ve2);border:1.5px solid var(--veba)" onclick="closeForm();archivarExG(${e.id})">🗃 Archivar</button>`
+      :`<button class="btn bgr" onclick="closeForm();reabrirExG(${e.id})">↩ Reabrir</button>`}
+    <button class="btn" style="background:var(--roli);color:var(--ro);border:1.5px solid var(--roba)" onclick="closeForm();delR('expediente',${e.id})">🗑</button>`;
   g('fp').classList.add('open');
 }
-// RIC-58 globales
+
+
 async function convertirRic58Global(id){
   // Reutiliza el flow existente pero vuelve a showHomeExpedientes
   const all=await getAll('ric58');
@@ -2711,8 +2915,28 @@ async function smartMerge(k,newData){
         if(er.garantiaMeses)kept.garantiaMeses=er.garantiaMeses;
         if(er.tipoEq&&er.tipoEq!=='Hospital')kept.tipoEq=er.tipoEq;
         merged.push(kept);
+      } else if(k==='ex') {
+        // Expedientes: SKINET tiene prioridad en estado y fecha si cambió
+        const estadoCambio=nr.estado&&nr.estado!==er.estado;
+        const fechaCambio=nr.fechaInicio&&nr.fechaInicio!==er.fechaInicio;
+        if(estadoCambio||fechaCambio){
+          // SKINET actualizó → tomar su info aunque esté archivado en app
+          const upd={...er,id:er.id};
+          if(estadoCambio){upd.estado=nr.estado;reason='SKINET (nuevo estado: '+nr.estado+')';}
+          if(fechaCambio)upd.fechaInicio=nr.fechaInicio;
+          if(nr.descripcion&&nr.descripcion.length>5)upd.descripcion=nr.descripcion;
+          upd.actualizadoSkinet=true;
+          merged.push(upd);fromExcel++;
+          conflicts.push({campo:kv,motivo:reason});
+        } else {
+          // Sin cambios: preservar lo de la app
+          if(er.mod){winner=er;reason='App (editado manualmente)'}
+          merged.push({...nr,...winner,id:er.id});
+          if(winner===er){fromApp++;conflicts.push({campo:kv,motivo:reason})}else fromExcel++;
+        }
+        delete exMap[kv]; continue;
       } else {
-        // ex/or: preserve app edits completely
+        // ordenes: preserve app edits completely
         if(er.mod){winner=er;reason='App (editado manualmente)'}
         merged.push({...nr,...winner,id:er.id});
       }
