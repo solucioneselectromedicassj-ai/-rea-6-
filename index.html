@@ -2920,24 +2920,22 @@ async function smartMerge(k,newData){
         const estadoCambio=nr.estado&&nr.estado!==er.estado;
         const fechaCambio=nr.fechaInicio&&nr.fechaInicio!==er.fechaInicio;
         if(estadoCambio||fechaCambio){
-          // SKINET actualizó → tomar su info aunque esté archivado en app
           const upd={...er,id:er.id};
-          if(estadoCambio){upd.estado=nr.estado;reason='SKINET (nuevo estado: '+nr.estado+')';}
+          if(estadoCambio){upd.estado=nr.estado;}
           if(fechaCambio)upd.fechaInicio=nr.fechaInicio;
           if(nr.descripcion&&nr.descripcion.length>5)upd.descripcion=nr.descripcion;
           upd.actualizadoSkinet=true;
           merged.push(upd);fromExcel++;
-          conflicts.push({campo:kv,motivo:reason});
+          conflicts.push({campo:kv,motivo:'SKINET (nuevo estado: '+(nr.estado||'')+')'});
         } else {
-          // Sin cambios: preservar lo de la app
-          if(er.mod){winner=er;reason='App (editado manualmente)'}
+          if(er.mod){winner=er;}
           merged.push({...nr,...winner,id:er.id});
-          if(winner===er){fromApp++;conflicts.push({campo:kv,motivo:reason})}else fromExcel++;
+          if(winner===er){fromApp++;}else fromExcel++;
         }
-        delete exMap[kv]; continue;
+        delete exMap[kv];
       } else {
         // ordenes: preserve app edits completely
-        if(er.mod){winner=er;reason='App (editado manualmente)'}
+        if(er.mod){winner=er;reason='App (editado manualmente)';}
         merged.push({...nr,...winner,id:er.id});
       }
       if(winner===er){fromApp++;conflicts.push({campo:kv,motivo:reason})}else fromExcel++;
