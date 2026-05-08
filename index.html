@@ -1284,249 +1284,197 @@ function showHomeTareas(){showGlobalTareas();}
 async function showHomeCompras(){
   showView('globalView');
   curSrv=null;curSubSrv=null;curMod=null;
+  const mainEl=g('main');if(mainEl)mainEl.scrollTop=0;
   const el=g('globalContent');
   el.innerHTML='<div style="color:var(--dim);font-size:.78rem;padding:.4rem">Cargando...</div>';
   try{
     const compras=await getAll('compras');
-    const activas=compras.filter(c=>!compraArchivada(c));
-    const archivadas=compras.filter(c=>compraArchivada(c));
-    const urgentes=activas.filter(c=>c.estadoOC==='Sin Oferentes');
-    // agrupar activas por servicio
-    const byServ={};
-    activas.forEach(c=>{
-      const k=c.servicio||'General';
-      if(!byServ[k])byServ[k]=[];
-      byServ[k].push(c);
-    });
+    const CERRADAS=['Entregado','Rechazado','De Baja','Archivado','Sin Oferentes'];
+    const activas=compras.filter(c=>!CERRADAS.includes(c.estadoOC));
+    const urgentes=compras.filter(c=>c.estadoOC==='Sin Oferentes');
+
+    const iniciadas=compras.filter(c=>c.estadoOC==='Iniciado'||!c.estadoOC);
+    const enTramite=compras.filter(c=>c.estadoOC&&!['Iniciado','Entregado','Rechazado','De Baja','Archivado','Sin Oferentes'].includes(c.estadoOC));
+    const entregadas=compras.filter(c=>c.estadoOC==='Entregado');
+    const deBaja=compras.filter(c=>c.estadoOC==='De Baja'||c.estadoOC==='Sin Oferentes'||c.estadoOC==='Rechazado');
+    const archivadas=compras.filter(c=>c.estadoOC==='Archivado');
+
+    const carpetaC=(titulo,emoji,items,color,open=false)=>{
+      if(!items.length)return'';
+      // agrupar por servicio dentro de la carpeta
+      const bySrv={};
+      items.forEach(c=>{const k=c.servicio||'General';if(!bySrv[k])bySrv[k]=[];bySrv[k].push(c);});
+      const srvHtml=Object.keys(bySrv).sort().map(srv=>{
+        const srvInfo=SRVS.find(s=>mSrv(s.id,srv));
+        return`<div class="stitle" style="margin-top:.3rem">${srvInfo?srvInfo.ico+' ':''} ${es(srv)} (${bySrv[srv].length})</div>
+          ${bySrv[srv].map(c=>renderCompraCard(c)).join('')}`;
+      }).join('');
+      return`<details ${open?'open':''} style="margin-bottom:.35rem">
+        <summary style="font-size:.73rem;font-weight:700;color:${color};cursor:pointer;padding:.35rem .5rem;
+          background:${color}12;border:1.5px solid ${color}33;border-radius:9px;list-style:none;
+          display:flex;align-items:center;gap:.35rem">
+          ${emoji} ${titulo} <span style="background:${color};color:#fff;border-radius:20px;padding:.05rem .42rem;font-size:.62rem;margin-left:.15rem">${items.length}</span>
+        </summary>
+        <div style="margin-top:.3rem;padding-left:.1rem">${srvHtml}</div>
+      </details>`;
+    };
+
     let html=`
       <button class="volver" onclick="goHome()">← Inicio</button>
       <div class="sectit"><span>🛒</span> Compras / OC · Global</div>
-      <div class="tbar" style="margin-bottom:.5rem;flex-wrap:wrap;gap:.3rem">
+      <div class="tbar" style="margin-bottom:.4rem;flex-wrap:wrap;gap:.3rem">
         <button class="btn baz2" onclick="openCompraGlobal()">+ Nueva Compra / OC</button>
         <div class="sp"></div>
-        <span class="bx baz">${activas.length} activas</span>
+        <span class="bx baz">${compras.length} total</span>
         ${urgentes.length?`<span class="bx bro">🚨 ${urgentes.length} sin oferentes</span>`:''}
+      </div>
+      <div class="tbar" style="margin-bottom:.5rem">
+        <input class="fi" type="text" placeholder="🔍 Buscar por descripción, N° OC, servicio..."
+          oninput="filtrarCarpetasGlobal(this.value,'compGlobCarpetas','verCompra')">
       </div>`;
     if(urgentes.length)
       html+=`<div class="warnbx" style="margin-bottom:.5rem">🚨 <b>${urgentes.length} OC sin oferentes</b> — re-gestionar urgente</div>`;
-    Object.keys(byServ).sort().forEach(srv=>{
-      const rows=byServ[srv];
-      const srvInfo=SRVS.find(s=>mSrv(s.id,srv));
-      html+=`<div class="stitle">${srvInfo?srvInfo.ico+' ':''} ${es(srv)} (${rows.length})</div>`;
-      rows.forEach(c=>html+=renderCompraCard(c));
-    });
-    if(!activas.length) html+=`<div class="emp"><div class="ei">🛒</div>Sin compras activas.</div>`;
-    if(archivadas.length){
-      html+=`<details style="margin-top:.5rem"><summary style="font-size:.72rem;font-weight:700;color:var(--dim);cursor:pointer;padding:.3rem 0">📁 Archivadas / Entregadas (${archivadas.length})</summary>
-      <div style="margin-top:.3rem">${archivadas.map(c=>renderCompraCard(c)).join('')}</div></details>`;
-    }
+    html+=`<div id="compGlobCarpetas">
+      ${!compras.length?`<div class="emp"><div class="ei">🛒</div>Sin compras registradas.</div>`:''}
+      ${carpetaC('Iniciadas','🆕',iniciadas,'var(--na)',true)}
+      ${carpetaC('En Trámite / Adjudicado','📋',enTramite,'var(--az)',true)}
+      ${carpetaC('Entregadas','✅',entregadas,'var(--ve2)',false)}
+      ${carpetaC('De Baja / Sin Oferentes','⚠',deBaja,'var(--ro)',false)}
+      ${carpetaC('Archivadas','📁',archivadas,'var(--dim)',false)}
+    </div>`;
     el.innerHTML=html;
   }catch(e){el.innerHTML=`<div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div>`}
 }
 
-
-// ── Funciones de compras ──
-function openCompraGlobal(){
-  curSrv=null;curSubSrv=null;
-  _afterSaveCallback=()=>showHomeCompras();
-  openForm('compra');
-}
-async function avanzarEstadoCompra(id,next){
-  const all=await getAll('compras');
-  const c=all.find(x=>x.id===id);if(!c)return;
-  await put('compras',{...c,estadoOC:next,mod:new Date().toLocaleDateString('es-AR')});
-  toast('Estado → '+next,'ok');
-  if(g('globalView')&&g('globalView').style.display!=='none') await showHomeCompras();
-  else await refreshView();
-}
-async function reabrirCompra(id){
-  const all=await getAll('compras');
-  const c=all.find(x=>x.id===id);if(!c)return;
-  await put('compras',{...c,estadoOC:'Iniciado',mod:new Date().toLocaleDateString('es-AR')});
-  toast('Compra reabierta','ok');
-  if(g('globalView')&&g('globalView').style.display!=='none') await showHomeCompras();
-  else await refreshView();
-}
-async function verCompra(id){
-  const all=await getAll('compras');
-  const c=all.find(x=>x.id===id);if(!c)return;
-  const est=c.estadoOC||'Iniciado';
-  const archivable=compraArchivada(c);
-  const stColor=est==='Entregado'?'var(--ve2)':est==='Adjudicado'?'#059669':est==='En Trámite'?'var(--az)':est==='Sin Oferentes'?'var(--ro)':est==='Rechazado'||est==='De Baja'||est==='Archivado'?'var(--dim)':'var(--na)';
-  g('fptit').innerHTML='🛒 '+es(c.descripcion).substring(0,30);
-  g('fpbody').innerHTML=`
-    <div style="background:${stColor}18;border:1.5px solid ${stColor}55;border-radius:9px;padding:.5rem .75rem;margin-bottom:.65rem;display:flex;align-items:center;gap:.5rem">
-      <div style="font-size:1.2rem">🛒</div>
-      <div><div style="font-size:.78rem;font-weight:700;color:${stColor}">${est}</div>
-        ${c.nroc?`<div style="font-size:.64rem;color:var(--dim)">N° OC: ${es(c.nroc)}</div>`:''}
-      </div>
-    </div>
-    <div style="font-size:.78rem;font-weight:600;line-height:1.45;margin-bottom:.6rem">${es(c.descripcion)}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.35rem .6rem;font-size:.72rem;margin-bottom:.6rem">
-      <div><span style="color:var(--dim);font-size:.63rem;display:block">Tipo</span><b>${es(c.tipo||'—')}</b></div>
-      <div><span style="color:var(--dim);font-size:.63rem;display:block">Servicio</span><b>${es(c.servicio||'—')}</b></div>
-      <div><span style="color:var(--dim);font-size:.63rem;display:block">Fecha</span><b>${c.fecha||'—'}</b></div>
-      <div><span style="color:var(--dim);font-size:.63rem;display:block">Usuario</span><b>${es(c.usuario||'—')}</b></div>
-      ${c.observaciones?`<div style="grid-column:1/-1"><span style="color:var(--dim);font-size:.63rem;display:block">Observaciones</span><b>${es(c.observaciones)}</b></div>`:''}
-    </div>
-    <div class="stitle">Cambiar estado</div>
-    <div style="display:flex;gap:.25rem;flex-wrap:wrap;margin-bottom:.2rem">
-      ${EST_OC.map(s=>`<button onclick="avanzarEstadoCompra(${c.id},'${s}');closeForm()" style="background:${s===est?stColor:'var(--s2)'};color:${s===est?'#fff':'var(--txt)'};border:1.5px solid ${s===est?stColor:'var(--brd)'};border-radius:20px;padding:.22rem .6rem;font-size:.68rem;cursor:pointer;font-weight:${s===est?'700':'400'}">${s}</button>`).join('')}
-    </div>`;
-  g('fpfoot').innerHTML=`
-    <button class="btn bgr" onclick="closeForm()">Cerrar</button>
-    <button class="btn baz2" onclick="closeForm();curSrv=null;editR('compra',${c.id})">✏️ Editar</button>
-    ${archivable?`<button class="btn" style="background:var(--veli);color:var(--ve2);border:1.5px solid var(--veba)" onclick="closeForm();reabrirCompra(${c.id})">↩ Reabrir</button>`:''}
-    <button class="btn" style="background:var(--roli);color:var(--ro);border:1.5px solid var(--roba)" onclick="closeForm();delR('compra',${c.id})">🗑</button>`;
-  g('fp').classList.add('open');
-}
-
-// ── Vista Expedientes global desde Home ──
 async function showHomeExpedientes(){
   showView('globalView');
   curSrv=null;curSubSrv=null;curMod=null;
+  const mainEl=g('main');if(mainEl)mainEl.scrollTop=0;
   const el=g('globalContent');
   el.innerHTML='<div style="color:var(--dim);font-size:.78rem;padding:.4rem">Cargando...</div>';
   try{
     const [exps,rics]=await Promise.all([getAll('expedientes'),getAll('ric58')]);
     const hoy=today();
-    const expActivos=exps.filter(e=>e.estado!=='Archivado'&&e.estado!=='Rechazado');
-    const expArchivados=exps.filter(e=>e.estado==='Archivado'||e.estado==='Rechazado');
-    const ricActivos=rics.filter(r=>r.estado!=='Convertido a Expediente'&&r.estado!=='Archivado');
-    const ricArchivados=rics.filter(r=>r.estado==='Convertido a Expediente'||r.estado==='Archivado');
-    const ricEnv=ricActivos.filter(r=>!r.estado||r.estado==='Enviado');
-    const ricNeg=ricActivos.filter(r=>r.estado==='Negado');
+    const ARCH=['Entregado','Rechazado','De Baja','Pasa ejercicio siguiente','Archivado'];
+    const ACT=EST_EX.filter(s=>!ARCH.includes(s));
+    const stC=(est)=>est==='Entregado'||est==='Aceptado'||est==='Adjudicado'?'var(--ve2)':
+      est==='En Trámite'||est==='Pasa ejercicio siguiente'?'var(--az)':
+      est==='Rechazado'||est==='De Baja'?'var(--ro)':est==='Archivado'?'var(--dim)':'var(--na)';
 
-    // Card de expediente — tappeable igual que equipos
-    const ARCH_EST=['Entregado','Rechazado','De Baja','Pasa ejercicio siguiente','Archivado'];
-    const ACT_EST=EST_EX.filter(s=>!ARCH_EST.includes(s));
-    const stColorEx=(est)=>est==='Entregado'||est==='Aceptado'||est==='Adjudicado'?'var(--ve2)':
-      est==='En Trámite'?'var(--az)':est==='Rechazado'||est==='De Baja'?'var(--ro)':
-      est==='Archivado'||est==='Pasa ejercicio siguiente'?'var(--dim)':'var(--na)';
-    const expCard=(e)=>{
+    const expCardGlob=(e)=>{
       const fi=toD(e.fechaInicio),d=diff(fi,hoy);
       const est=e.estado||'Iniciado';
-      const archivado=ARCH_EST.includes(est);
-      const sc=stColorEx(est);
-      const idxAct=ACT_EST.indexOf(est);
-      const nextEst=idxAct>=0?ACT_EST[(idxAct+1)%ACT_EST.length]:null;
-      return`<div onclick="verExpediente(${e.id})" style="background:var(--s1);border:1.5px solid ${archivado?'var(--brd)':'var(--brd)'};border-left:4px solid ${sc};
-        border-radius:10px;padding:.65rem .75rem;margin-bottom:.38rem;box-shadow:var(--sh);cursor:pointer;-webkit-tap-highlight-color:transparent;opacity:${archivado?.6:1}">
-        <div style="display:flex;align-items:flex-start;gap:.5rem">
+      const sc=stC(est);
+      const arch=ARCH.includes(est);
+      const idxA=ACT.indexOf(est);
+      const nextEst=idxA>=0?ACT[(idxA+1)%ACT.length]:null;
+      return`<div onclick="verExpediente(${e.id})" style="background:var(--s1);border:1.5px solid var(--brd);border-left:4px solid ${sc};
+        border-radius:10px;padding:.6rem .7rem;margin-bottom:.34rem;box-shadow:var(--sh);cursor:pointer;opacity:${arch?.65:1}">
+        <div style="display:flex;align-items:flex-start;gap:.45rem">
           <div style="flex:1;min-width:0">
-            <div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center;margin-bottom:.2rem">
-              <span style="font-size:.8rem;font-weight:700;color:var(--az)">Exp. ${es(e.numero)}</span>
-              <span style="font-size:.65rem;font-weight:700;color:${sc};background:${sc}18;border:1px solid ${sc}55;border-radius:20px;padding:.1rem .42rem">${est}</span>
+            <div style="display:flex;gap:.25rem;flex-wrap:wrap;align-items:center;margin-bottom:.18rem">
+              <span style="font-size:.78rem;font-weight:700;color:var(--az)">Exp. ${es(e.numero)}</span>
+              <span style="font-size:.63rem;font-weight:700;color:${sc};background:${sc}18;border:1px solid ${sc}55;border-radius:20px;padding:.08rem .38rem">${est}</span>
             </div>
-            <div style="font-size:.73rem;line-height:1.35;margin-bottom:.18rem">${es(e.descripcion)}</div>
-            <div style="font-size:.62rem;color:var(--dim)">
+            <div style="font-size:.72rem;line-height:1.35;margin-bottom:.15rem">${es(e.descripcion)}</div>
+            <div style="font-size:.61rem;color:var(--dim)">
               ${e.servicio?`<span style="color:var(--az)">${es(e.servicio)}</span> · `:''}
-              ${fd(fi)||'—'} · <b style="color:var(--cy)">${d!==null?d+'d':''}</b>
-              ${e.responsable?` · 👤 ${es(e.responsable)}`:''}
+              ${fd(fi)||'—'} ${d!==null?'· <b style="color:var(--cy)">'+d+'d</b>':''}
+              ${e.responsable?' · 👤 '+es(e.responsable):''}
             </div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:.25rem;flex-shrink:0" onclick="event.stopPropagation()">
-            ${nextEst?`<button style="background:var(--az3);color:var(--az);border:1.5px solid var(--az);border-radius:8px;padding:.32rem .5rem;font-size:.8rem;font-weight:700;cursor:pointer;min-width:34px" onclick="avanzarEstadoEx(${e.id},'${nextEst}')" title="→ ${nextEst}">→</button>`:''}
-            <button style="background:var(--s2);border:1.5px solid var(--brd);border-radius:8px;padding:.32rem .45rem;font-size:.76rem;cursor:pointer;min-width:34px" onclick="curSrv=null;editR('expediente',${e.id})" title="Editar">✏️</button>
-            ${!archivado?`<button style="background:var(--veli);color:var(--ve2);border:1.5px solid var(--veba);border-radius:8px;padding:.32rem .45rem;font-size:.76rem;cursor:pointer;min-width:34px" onclick="archivarExG(${e.id})" title="Archivar">🗃</button>`
-            :`<button style="background:var(--s2);border:1.5px solid var(--brd);border-radius:8px;padding:.32rem .45rem;font-size:.76rem;cursor:pointer" onclick="reabrirExG(${e.id})" title="Reabrir">↩</button>`}
+          <div style="display:flex;flex-direction:column;gap:.22rem;flex-shrink:0" onclick="event.stopPropagation()">
+            ${nextEst?`<button style="background:var(--az3);color:var(--az);border:1.5px solid var(--az);border-radius:7px;padding:.3rem .45rem;font-size:.78rem;font-weight:700;cursor:pointer" onclick="avanzarEstadoEx(${e.id},'${nextEst}')" title="→ ${nextEst}">→</button>`:''}
+            <button style="background:var(--s2);border:1.5px solid var(--brd);border-radius:7px;padding:.3rem .42rem;font-size:.74rem;cursor:pointer" onclick="curSrv=null;editR('expediente',${e.id})">✏️</button>
+            ${!arch?`<button style="background:var(--veli);color:var(--ve2);border:1.5px solid var(--veba);border-radius:7px;padding:.3rem .42rem;font-size:.74rem;cursor:pointer" onclick="archivarExG(${e.id})">🗃</button>`
+            :`<button style="background:var(--s2);border:1.5px solid var(--brd);border-radius:7px;padding:.3rem .42rem;font-size:.74rem;cursor:pointer" onclick="reabrirExG(${e.id})">↩</button>`}
           </div>
         </div>
       </div>`;
     };
 
-    // Card de RIC-58
-    const ricCard=(r)=>{
-      const fi=toD(r.fechaEnvio),d=diff(fi,hoy);
-      const esNeg=r.estado==='Negado';
-      const brdColor=esNeg?'var(--ro)':'var(--pu)';
-      return`<div style="background:var(--s1);border:1.5px solid var(--brd);border-left:4px solid ${brdColor};
-        border-radius:10px;padding:.65rem .75rem;margin-bottom:.38rem;box-shadow:var(--sh)">
-        <div style="display:flex;align-items:flex-start;gap:.5rem">
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center;margin-bottom:.2rem">
-              <span style="font-size:.75rem;font-weight:700;color:var(--pu)">RIC-58 ${es(r.numero||'—')}</span>
-              ${esNeg?`<span class="pill pal">✕ Negado</span>`:`<span class="pill ppu">📤 Enviado</span>`}
-            </div>
-            <div style="font-size:.73rem;line-height:1.4;margin-bottom:.2rem">${es(r.descripcion)}</div>
-            <div style="font-size:.62rem;color:var(--dim)">
-              ${r.servicio?`<span style="color:var(--az)">${es(r.servicio)}</span> · `:''}
-              ${fd(fi)||'—'} · <b style="color:var(--cy)">${d!==null?d+'d':''}</b>
-            </div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:.22rem;flex-shrink:0">
-            ${!esNeg?`<button class="ab cvt" onclick="convertirRic58Global(${r.id})" title="Aprobado → Convertir a Expediente">📁 Exp.</button>`:''}
-            ${!esNeg?`<button class="ab" style="background:var(--roli);color:var(--ro);border-color:var(--roba)" onclick="negarRic58G(${r.id})" title="Negado">✕ Neg.</button>`:''}
-            <button class="ab" onclick="curSrv=null;editR('ric58',${r.id})">✏️</button>
-            <button class="ab" onclick="archivarRic58G(${r.id})" title="Archivar">🗃</button>
-            <button class="ab" onclick="delR('ric58',${r.id})">🗑</button>
-          </div>
-        </div>
-      </div>`;
+    const carpetaE=(titulo,emoji,items,color,open=false)=>{
+      if(!items.length)return'';
+      return`<details ${open?'open':''} style="margin-bottom:.35rem">
+        <summary style="font-size:.73rem;font-weight:700;color:${color};cursor:pointer;padding:.35rem .5rem;
+          background:${color}12;border:1.5px solid ${color}33;border-radius:9px;list-style:none;
+          display:flex;align-items:center;gap:.35rem">
+          ${emoji} ${titulo} <span style="background:${color};color:#fff;border-radius:20px;padding:.05rem .42rem;font-size:.62rem;margin-left:.15rem">${items.length}</span>
+        </summary>
+        <div style="margin-top:.3rem;padding-left:.1rem">${items.map(expCardGlob).join('')}</div>
+      </details>`;
     };
 
-    // ── HTML ──
+    const iniciados=exps.filter(e=>e.estado==='Iniciado'||!e.estado);
+    const enTramite=exps.filter(e=>e.estado&&!['Iniciado','Entregado','Rechazado','De Baja','Pasa ejercicio siguiente','Archivado'].includes(e.estado));
+    const entregados=exps.filter(e=>e.estado==='Entregado');
+    const deBaja=exps.filter(e=>e.estado==='De Baja'||e.estado==='Pasa ejercicio siguiente');
+    const rechazados=exps.filter(e=>e.estado==='Rechazado');
+    const archivados=exps.filter(e=>e.estado==='Archivado');
+    const ricActivos=rics.filter(r=>r.estado!=='Convertido a Expediente'&&r.estado!=='Archivado');
+
     let html=`
       <button class="volver" onclick="goHome()">← Inicio</button>
       <div class="sectit"><span>📁</span> Expedientes & RIC-58</div>
-      <div class="tbar" style="margin-bottom:.5rem;flex-wrap:wrap;gap:.3rem">
+      <div class="tbar" style="margin-bottom:.4rem;flex-wrap:wrap;gap:.3rem">
         <button class="btn baz2" onclick="openExpGlobal()">+ Expediente</button>
         <button class="btn" style="background:#f3e5ff;color:var(--pu);border:1.5px solid #d7b3f8" onclick="openRic58Global()">+ RIC-58</button>
         <div class="sp"></div>
-        <span class="bx baz">${expActivos.length} exp.</span>
+        <span class="bx baz">${exps.length} exp.</span>
         ${ricActivos.length?`<span class="bx bpu">${ricActivos.length} RIC-58</span>`:''}
+      </div>
+      <div class="tbar" style="margin-bottom:.5rem">
+        <input class="fi" type="text" placeholder="🔍 Buscar por N°, descripción, servicio..."
+          oninput="filtrarCarpetasGlobal(this.value,'expGlobCarpetas','verExpediente')">
       </div>`;
 
-    // RIC-58 activos primero si hay
+    // RIC-58 activos primero
     if(ricActivos.length){
-      html+=`<div class="stitle" style="color:var(--pu);margin-bottom:.35rem">📋 RIC-58 pendientes (${ricActivos.length})</div>`;
-      ricActivos.forEach(r=>html+=ricCard(r));
+      html+=`<details open style="margin-bottom:.35rem">
+        <summary style="font-size:.73rem;font-weight:700;color:var(--pu);cursor:pointer;padding:.35rem .5rem;
+          background:#f3e5ff;border:1.5px solid #d7b3f8;border-radius:9px;list-style:none;display:flex;align-items:center;gap:.35rem">
+          📋 RIC-58 Pendientes <span style="background:var(--pu);color:#fff;border-radius:20px;padding:.05rem .42rem;font-size:.62rem;margin-left:.15rem">${ricActivos.length}</span>
+        </summary>
+        <div style="margin-top:.3rem;padding-left:.1rem">
+          ${ricActivos.map(r=>{
+            const fi=toD(r.fechaEnvio),d=diff(fi,hoy);
+            const esNeg=r.estado==='Negado';
+            return`<div style="background:var(--s1);border:1.5px solid var(--brd);border-left:4px solid ${esNeg?'var(--ro)':'var(--pu)'};
+              border-radius:10px;padding:.6rem .7rem;margin-bottom:.32rem;box-shadow:var(--sh)">
+              <div style="display:flex;align-items:flex-start;gap:.45rem">
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;gap:.25rem;align-items:center;margin-bottom:.15rem">
+                    <span style="font-size:.75rem;font-weight:700;color:var(--pu)">RIC-58 ${es(r.numero||'—')}</span>
+                    ${esNeg?'<span class="pill pal">✕ Negado</span>':'<span class="pill ppu">📤 Enviado</span>'}
+                  </div>
+                  <div style="font-size:.72rem;line-height:1.35">${es(r.descripcion)}</div>
+                  <div style="font-size:.61rem;color:var(--dim)">${r.servicio?es(r.servicio)+' · ':''} ${fd(fi)||'—'} ${d!==null?'· <b style="color:var(--cy)">'+d+'d</b>':''}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:.22rem;flex-shrink:0">
+                  ${!esNeg?`<button class="ab cvt" onclick="convertirRic58Global(${r.id})" title="Convertir a Exp.">📁</button>`:''}
+                  ${!esNeg?`<button class="ab" style="background:var(--roli);color:var(--ro);border-color:var(--roba)" onclick="negarRic58G(${r.id})">✕</button>`:''}
+                  <button class="ab" onclick="curSrv=null;editR('ric58',${r.id})">✏️</button>
+                  <button class="ab" onclick="archivarRic58G(${r.id})">🗃</button>
+                </div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </details>`;
     }
 
-    // Expedientes agrupados por servicio
-    const byServ={};
-    expActivos.forEach(e=>{
-      const k=e.servicio||'General';
-      if(!byServ[k])byServ[k]=[];
-      byServ[k].push(e);
-    });
-    Object.keys(byServ).sort().forEach(srv=>{
-      const rows=byServ[srv];
-      const srvInfo=SRVS.find(s=>mSrv(s.id,srv));
-      html+=`<div class="stitle" style="margin-top:.4rem">${srvInfo?srvInfo.ico+' ':''} ${es(srv)} (${rows.length})</div>`;
-      rows.forEach(e=>html+=expCard(e));
-    });
-
-    if(!expActivos.length&&!ricActivos.length)
-      html+=`<div class="emp"><div class="ei">📁</div>Sin expedientes ni RIC-58.<br>Usá los botones de arriba para agregar.</div>`;
-
-    // Archivados colapsados
-    const totalArch=expArchivados.length+ricArchivados.length;
-    if(totalArch){
-      html+=`<details style="margin-top:.5rem"><summary style="font-size:.72rem;font-weight:700;color:var(--dim);cursor:pointer;padding:.3rem 0">📁 Archivados (${totalArch})</summary>
-      <div style="margin-top:.3rem;opacity:.7">
-        ${expArchivados.map(e=>`<div style="background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.48rem .65rem;margin-bottom:.28rem;display:flex;align-items:center;gap:.45rem">
-          <div style="flex:1"><span style="font-size:.7rem;font-weight:700;color:var(--dim)">Exp. ${es(e.numero)}</span>
-            <span class="pill pdim" style="margin-left:.2rem;font-size:.58rem">${e.estado}</span>
-            <div style="font-size:.62rem;color:var(--dim)">${es(e.descripcion)}</div>
-          </div>
-          <button class="ab" onclick="reabrirExG(${e.id})">↩</button>
-          <button class="ab" onclick="delR('expediente',${e.id})">🗑</button>
-        </div>`).join('')}
-        ${ricArchivados.map(r=>`<div style="background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.48rem .65rem;margin-bottom:.28rem;display:flex;align-items:center;gap:.45rem">
-          <div style="flex:1"><span style="font-size:.7rem;font-weight:700;color:var(--dim)">RIC-58 ${es(r.numero)}</span>
-            ${r.estado==='Convertido a Expediente'?`<span class="pill pok" style="margin-left:.2rem;font-size:.58rem">📁 Exp.${es(r.expGenerado||'')}</span>`:`<span class="pill pdim" style="margin-left:.2rem;font-size:.58rem">Archivado</span>`}
-            <div style="font-size:.62rem;color:var(--dim)">${es(r.descripcion)}</div>
-          </div>
-          <button class="ab" onclick="reabrirRic58G(${r.id})">↩</button>
-          <button class="ab" onclick="delR('ric58',${r.id})">🗑</button>
-        </div>`).join('')}
-      </div></details>`;
-    }
+    html+=`<div id="expGlobCarpetas">
+      ${!exps.length?`<div class="emp"><div class="ei">📁</div>Sin expedientes registrados.</div>`:''}
+      ${carpetaE('Iniciados','🆕',iniciados,'var(--na)',true)}
+      ${carpetaE('En Trámite / Aceptado / Adjudicado','📋',enTramite,'var(--az)',true)}
+      ${carpetaE('Entregados','✅',entregados,'var(--ve2)',false)}
+      ${carpetaE('De Baja / Pasa ejercicio','⚠',deBaja,'var(--dim)',false)}
+      ${carpetaE('Rechazados','✕',rechazados,'var(--ro)',false)}
+      ${carpetaE('Archivados','📁',archivados,'var(--dim)',false)}
+    </div>`;
     el.innerHTML=html;
   }catch(e){el.innerHTML=`<div class="emp"><div class="ei">⚠️</div>Error: ${e.message}</div>`}
 }
-
 
 // ── Funciones de expedientes y RIC-58 globales ──
 function openExpGlobal(){
@@ -3524,6 +3472,21 @@ async function verTarea(id){
   btns+=`<button class="btn" style="background:var(--roli);color:var(--ro);border:1.5px solid var(--roba)" onclick="closeForm();delR('tarea',${t.id})">🗑</button>`;
   g('fpfoot').innerHTML=btns;
   g('fp').classList.add('open');
+}
+
+function filtrarCarpetasGlobal(q, containerId, tapFn){
+  const container=document.getElementById(containerId);
+  if(!container)return;
+  const cards=container.querySelectorAll('[onclick*="'+tapFn+'"]');
+  const lq=q.toLowerCase();
+  cards.forEach(c=>{
+    c.style.display=!q||c.textContent.toLowerCase().includes(lq)?'':'none';
+  });
+  // Abrir carpetas con resultados, cerrar las sin resultados
+  container.querySelectorAll('details').forEach(d=>{
+    const visible=[...d.querySelectorAll('[onclick*="'+tapFn+'"]')].some(c=>c.style.display!=='none');
+    if(q) d.open=visible;
+  });
 }
 
 function openGlobalForm(type){
