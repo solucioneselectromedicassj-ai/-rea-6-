@@ -2307,60 +2307,105 @@ async function modEx(tc){
   const all=await getAll('expedientes');
   const rows=all.filter(e=>mSrv(e.servicio,curSrv)&&matchSub(e));
   const hoy=today();
-  const activos=rows.filter(e=>e.estado!=='Archivado'&&e.estado!=='Rechazado');
-  const archivados=rows.filter(e=>e.estado==='Archivado'||e.estado==='Rechazado');
-  const renderExpCard=(e)=>{
+  const ARCH=['Entregado','Rechazado','De Baja','Pasa ejercicio siguiente','Archivado'];
+  const ACT=EST_EX.filter(s=>!ARCH.includes(s));
+  const stC=(est)=>est==='Entregado'||est==='Aceptado'||est==='Adjudicado'?'var(--ve2)':
+    est==='En Trámite'||est==='Pasa ejercicio siguiente'?'var(--az)':
+    est==='Rechazado'||est==='De Baja'?'var(--ro)':
+    est==='Archivado'?'var(--dim)':'var(--na)';
+
+  const card=(e)=>{
     const fi=toD(e.fechaInicio),d=diff(fi,hoy);
-    const stColor=e.estado==='Aprobado'?'var(--ve2)':e.estado==='En Trámite'?'var(--az)':'var(--na)';
-    return`<div style="background:var(--s1);border:1.5px solid var(--brd);border-left:4px solid ${stColor};
-      border-radius:10px;padding:.65rem .75rem;margin-bottom:.38rem;box-shadow:var(--sh)">
-      <div style="display:flex;align-items:flex-start;gap:.5rem">
+    const est=e.estado||'Iniciado';
+    const sc=stC(est);
+    const arch=ARCH.includes(est);
+    const idxA=ACT.indexOf(est);
+    const nextEst=idxA>=0?ACT[(idxA+1)%ACT.length]:null;
+    return`<div onclick="verExpediente(${e.id})" style="background:var(--s1);border:1.5px solid var(--brd);border-left:4px solid ${sc};
+      border-radius:10px;padding:.6rem .7rem;margin-bottom:.34rem;box-shadow:var(--sh);cursor:pointer;opacity:${arch?.65:1}">
+      <div style="display:flex;align-items:flex-start;gap:.45rem">
         <div style="flex:1;min-width:0">
-          <div style="display:flex;gap:.28rem;flex-wrap:wrap;align-items:center;margin-bottom:.25rem">
-            <span style="font-size:.75rem;font-weight:700;color:var(--az)">Exp. ${es(e.numero)}</span>
-            ${pill(e.estado,'ex')}
+          <div style="display:flex;gap:.25rem;flex-wrap:wrap;align-items:center;margin-bottom:.18rem">
+            <span style="font-size:.78rem;font-weight:700;color:var(--az)">Exp. ${es(e.numero)}</span>
+            <span style="font-size:.63rem;font-weight:700;color:${sc};background:${sc}18;border:1px solid ${sc}55;border-radius:20px;padding:.08rem .38rem">${est}</span>
           </div>
-          <div style="font-size:.73rem;line-height:1.4;margin-bottom:.2rem">${es(e.descripcion)}</div>
-          <div style="font-size:.62rem;color:var(--dim)">Inicio: ${fd(fi)||'—'} · ${d!==null?`<b style="color:var(--cy)">${d}d transcurridos</b>`:'sin fecha'}</div>
-          ${e.responsable?`<div style="font-size:.61rem;color:var(--dim)">👤 ${es(e.responsable)}</div>`:''}
+          <div style="font-size:.72rem;line-height:1.35;margin-bottom:.16rem">${es(e.descripcion)}</div>
+          <div style="font-size:.61rem;color:var(--dim)">
+            ${fd(fi)||'—'} ${d!==null?'· <b style="color:var(--cy)">'+d+'d</b>':''}
+            ${e.responsable?' · 👤 '+es(e.responsable):''}
+          </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:.22rem;flex-shrink:0">
-          <button class="ab" onclick="cambiarEstadoEx(${e.id})" title="Cambiar estado" style="background:var(--az3);color:var(--az);border-color:var(--az)">≡</button>
-          <button class="ab" onclick="editR('expediente',${e.id})">✏️</button>
-          <button class="ab" onclick="archivarEx(${e.id})" title="Archivar">🗃</button>
-          <button class="ab" onclick="delR('expediente',${e.id})">🗑</button>
+        <div style="display:flex;flex-direction:column;gap:.22rem;flex-shrink:0" onclick="event.stopPropagation()">
+          ${nextEst?`<button style="background:var(--az3);color:var(--az);border:1.5px solid var(--az);border-radius:7px;padding:.3rem .45rem;font-size:.78rem;font-weight:700;cursor:pointer" onclick="cambiarEstadoEx2(${e.id},'${nextEst}')" title="→ ${nextEst}">→</button>`:''}
+          <button style="background:var(--s2);border:1.5px solid var(--brd);border-radius:7px;padding:.3rem .42rem;font-size:.74rem;cursor:pointer" onclick="editR('expediente',${e.id})">✏️</button>
+          ${!arch?`<button style="background:var(--veli);color:var(--ve2);border:1.5px solid var(--veba);border-radius:7px;padding:.3rem .42rem;font-size:.74rem;cursor:pointer" onclick="archivarEx(${e.id})" title="Archivar">🗃</button>`
+          :`<button style="background:var(--s2);border:1.5px solid var(--brd);border-radius:7px;padding:.3rem .42rem;font-size:.74rem;cursor:pointer" onclick="reabrirEx(${e.id})">↩</button>`}
         </div>
       </div>
     </div>`;
   };
+
+  // Agrupar por carpetas
+  const iniciados=rows.filter(e=>e.estado==='Iniciado'||!e.estado);
+  const enTramite=rows.filter(e=>e.estado&&e.estado!=='Iniciado'&&!['Entregado','Rechazado','De Baja','Pasa ejercicio siguiente','Archivado'].includes(e.estado));
+  const entregados=rows.filter(e=>e.estado==='Entregado');
+  const deBaja=rows.filter(e=>e.estado==='De Baja');
+  const rechazados=rows.filter(e=>e.estado==='Rechazado'||e.estado==='Pasa ejercicio siguiente');
+  const archivados=rows.filter(e=>e.estado==='Archivado');
+
+  const carpeta=(titulo,emoji,items,color,open=false)=>{
+    if(!items.length)return'';
+    return`<details ${open?'open':''} style="margin-bottom:.35rem">
+      <summary style="font-size:.73rem;font-weight:700;color:${color};cursor:pointer;padding:.35rem .5rem;
+        background:${color}12;border:1.5px solid ${color}33;border-radius:9px;list-style:none;
+        display:flex;align-items:center;gap:.35rem">
+        ${emoji} ${titulo} <span style="background:${color};color:#fff;border-radius:20px;padding:.05rem .42rem;font-size:.62rem;margin-left:.15rem">${items.length}</span>
+      </summary>
+      <div style="margin-top:.3rem;padding-left:.2rem">
+        ${items.map(card).join('')}
+      </div>
+    </details>`;
+  };
+
   tc.innerHTML=`
-    <div class="tbar">
+    <div class="tbar" style="flex-wrap:wrap;gap:.3rem">
       <button class="btn baz2" onclick="openForm('expediente')">+ Agregar</button>
       <div class="sp"></div>
-      <span class="bx baz">${activos.length} activos</span>
-      ${archivados.length?`<span class="bx bdim">${archivados.length} archivados</span>`:''}
+      <span class="bx baz">${rows.length} total</span>
     </div>
-    ${!rows.length?`<div class="emp"><div class="ei">📁</div>Sin expedientes. Importá <b>expe.xlsx</b> o agregá manualmente.</div>`:''}
-    ${activos.map(renderExpCard).join('')}
-    ${archivados.length?`
-      <details style="margin-top:.4rem">
-        <summary style="font-size:.72rem;font-weight:700;color:var(--dim);cursor:pointer;padding:.3rem 0">
-          📁 Archivados / Rechazados (${archivados.length})
-        </summary>
-        <div style="margin-top:.35rem;opacity:.7">
-          ${archivados.map(e=>`<div style="background:var(--s2);border:1px solid var(--brd);border-radius:8px;padding:.5rem .65rem;margin-bottom:.3rem;display:flex;align-items:center;gap:.5rem">
-            <div style="flex:1;min-width:0">
-              <span style="font-size:.7rem;font-weight:700;color:var(--dim)">Exp. ${es(e.numero)}</span>
-              ${pill(e.estado,'ex')}
-              <div style="font-size:.67rem;color:var(--dim);margin-top:.12rem">${es(e.descripcion)}</div>
-            </div>
-            <div style="display:flex;gap:.2rem">
-              <button class="ab" onclick="reabrirEx(${e.id})" title="Reabrir">↩</button>
-              <button class="ab" onclick="delR('expediente',${e.id})">🗑</button>
-            </div>
-          </div>`).join('')}
-        </div>
-      </details>`:''}`;
+    <div class="tbar" style="margin-bottom:.45rem">
+      <input class="fi" type="text" placeholder="🔍 Buscar por N°, descripción, responsable..."
+        oninput="filtrarExpedientes(this.value,event.target.closest('#modContent')||event.target.closest('.tbar').parentElement)">
+    </div>
+    <div id="expCarpetas">
+      ${!rows.length?`<div class="emp"><div class="ei">📁</div>Sin expedientes. Importá <b>expe.xlsx</b> o agregá manualmente.</div>`:''}
+      ${carpeta('Iniciados','🆕',iniciados,'var(--na)',true)}
+      ${carpeta('En Trámite / Aceptado / Adjudicado','📋',enTramite,'var(--az)',true)}
+      ${carpeta('Entregados','✅',entregados,'var(--ve2)',false)}
+      ${carpeta('De Baja','🗑',deBaja,'var(--dim)',false)}
+      ${carpeta('Rechazados / Pasa ejercicio','↩',rechazados,'var(--ro)',false)}
+      ${carpeta('Archivados','📁',archivados,'var(--dim)',false)}
+    </div>`;
+}
+async function cambiarEstadoEx2(id,next){
+  const all=await getAll('expedientes');
+  const e=all.find(x=>x.id===id);if(!e)return;
+  await put('expedientes',{...e,estado:next,mod:new Date().toLocaleDateString('es-AR')});
+  toast('Estado → '+next,'ok');await refreshView();
+}
+function filtrarExpedientes(q,container){
+  const cards=document.querySelectorAll('#expCarpetas .tcard, #expCarpetas [onclick*="verExpediente"]');
+  const lq=q.toLowerCase();
+  cards.forEach(c=>{
+    c.style.display=!q||c.textContent.toLowerCase().includes(lq)?'':'none';
+  });
+  // Abrir carpetas que tengan resultados
+  if(q){
+    document.querySelectorAll('#expCarpetas details').forEach(d=>{
+      const visible=[...d.querySelectorAll('[onclick*="verExpediente"]')].some(c=>c.style.display!=='none');
+      d.open=visible;
+    });
+  }
 }
 async function cambiarEstadoEx(id){
   const all=await getAll('expedientes');
@@ -2531,31 +2576,62 @@ async function confirmarConversion(id){
 async function modCompras(tc){
   const all=await getAll('compras');
   const rows=all.filter(e=>mSrv(e.servicio,curSrv)&&matchSub(e));
-  const activas=rows.filter(c=>!compraArchivada(c));
-  const archivadas=rows.filter(c=>compraArchivada(c));
-  const urgentes=activas.filter(c=>c.estadoOC==='Sin Oferentes');
+
+  const carpetaC=(titulo,emoji,items,color,open=false)=>{
+    if(!items.length)return'';
+    return`<details ${open?'open':''} style="margin-bottom:.35rem">
+      <summary style="font-size:.73rem;font-weight:700;color:${color};cursor:pointer;padding:.35rem .5rem;
+        background:${color}12;border:1.5px solid ${color}33;border-radius:9px;list-style:none;
+        display:flex;align-items:center;gap:.35rem">
+        ${emoji} ${titulo} <span style="background:${color};color:#fff;border-radius:20px;padding:.05rem .42rem;font-size:.62rem;margin-left:.15rem">${items.length}</span>
+      </summary>
+      <div style="margin-top:.3rem;padding-left:.2rem">
+        ${items.map(c=>renderCompraCard(c)).join('')}
+      </div>
+    </details>`;
+  };
+
+  const CERRADAS=['Entregado','Rechazado','De Baja','Archivado'];
+  const iniciadas=rows.filter(c=>c.estadoOC==='Iniciado'||!c.estadoOC);
+  const enTramite=rows.filter(c=>c.estadoOC&&!['Iniciado','Entregado','Rechazado','De Baja','Archivado'].includes(c.estadoOC));
+  const entregadas=rows.filter(c=>c.estadoOC==='Entregado');
+  const deBaja=rows.filter(c=>c.estadoOC==='De Baja');
+  const rechazadas=rows.filter(c=>c.estadoOC==='Rechazado'||c.estadoOC==='Sin Oferentes');
+  const archivadas=rows.filter(c=>c.estadoOC==='Archivado');
+
   tc.innerHTML=`
-    <div class="tbar">
+    <div class="tbar" style="flex-wrap:wrap;gap:.3rem">
       <button class="btn baz2" onclick="openForm('compra')">+ Nueva Compra / OC</button>
       <div class="sp"></div>
-      <span class="bx baz">${activas.length} activas</span>
-      ${urgentes.length?`<span class="bx bro">🚨 ${urgentes.length} sin oferentes</span>`:''}
+      <span class="bx baz">${rows.length} total</span>
+      ${rechazadas.filter(c=>c.estadoOC==='Sin Oferentes').length?`<span class="bx bro">🚨 ${rechazadas.filter(c=>c.estadoOC==='Sin Oferentes').length} sin oferentes</span>`:''}
     </div>
-    ${urgentes.length?`<div class="warnbx" style="margin-bottom:.45rem">🚨 <b>${urgentes.length} OC sin oferentes</b> — requieren re-gestión urgente</div>`:''}
-    ${!rows.length?`<div class="emp"><div class="ei">🛒</div>Sin compras registradas.</div>`:''}
-    ${activas.map(c=>renderCompraCard(c)).join('')}
-    ${archivadas.length?`
-      <details style="margin-top:.4rem">
-        <summary style="font-size:.72rem;font-weight:700;color:var(--dim);cursor:pointer;padding:.3rem 0">
-          📁 Archivadas / Entregadas (${archivadas.length})
-        </summary>
-        <div style="margin-top:.3rem">
-          ${archivadas.map(c=>renderCompraCard(c)).join('')}
-        </div>
-      </details>`:''}`;
+    <div class="tbar" style="margin-bottom:.45rem">
+      <input class="fi" type="text" placeholder="🔍 Buscar por descripción, N° OC, estado..."
+        oninput="filtrarCompras(this.value)">
+    </div>
+    <div id="compCarpetas">
+      ${!rows.length?`<div class="emp"><div class="ei">🛒</div>Sin compras registradas.</div>`:''}
+      ${carpetaC('Iniciadas','🆕',iniciadas,'var(--na)',true)}
+      ${carpetaC('En Trámite / Adjudicado / Pendiente','📋',enTramite,'var(--az)',true)}
+      ${carpetaC('Entregadas','✅',entregadas,'var(--ve2)',false)}
+      ${carpetaC('De Baja / Sin Oferentes','⚠',rechazadas,'var(--ro)',false)}
+      ${carpetaC('Archivadas','📁',archivadas,'var(--dim)',false)}
+    </div>`;
 }
-
-
+function filtrarCompras(q){
+  const cards=document.querySelectorAll('#compCarpetas [onclick*="verCompra"]');
+  const lq=q.toLowerCase();
+  cards.forEach(c=>{
+    c.style.display=!q||c.textContent.toLowerCase().includes(lq)?'':'none';
+  });
+  if(q){
+    document.querySelectorAll('#compCarpetas details').forEach(d=>{
+      const visible=[...d.querySelectorAll('[onclick*="verCompra"]')].some(c=>c.style.display!=='none');
+      d.open=visible;
+    });
+  }
+}
 // ── ÓRDENES ──
 async function modOr(tc){
   const all=await getAll('ordenes');
