@@ -409,13 +409,11 @@ td{padding:.4rem .52rem;vertical-align:middle}
         <div class="stitle">Datos locales</div>
         <!-- Sheets -->
         <div class="stitle">🔗 Google Sheets (sincronización)</div>
-        <div id="sheetsSyncStatus" style="font-size:.7rem;color:var(--dim);margin-bottom:.4rem">
-          ${SHEETS_URL?'✅ Conectado':'⚠️ Sin configurar'}
-        </div>
+        <div id="sheetsSyncStatus" style="font-size:.7rem;color:var(--dim);margin-bottom:.4rem">⏳ Verificando...</div>
         <div style="display:flex;gap:.38rem;flex-wrap:wrap;margin-bottom:.65rem">
           <button class="btn baz2" onclick="configurarSheets()">🔗 Configurar Sheets</button>
-          ${SHEETS_URL?`<button class="btn bve" onclick="syncToSheets()">🔄 Sincronizar ahora</button>`:''}
-          ${SHEETS_URL?`<button class="btn bgr" onclick="cargarDesdeSheets()">⬇ Cargar desde Sheets</button>`:''}
+          <button class="btn bve" onclick="syncToSheets().then(()=>toast('Sincronizado ✔','ok'))">🔄 Sincronizar ahora</button>
+          <button class="btn bgr" onclick="cargarDesdeSheets()">⬇ Cargar desde Sheets</button>
         </div>
         <!-- Backup -->
         <div class="stitle">💾 Backup local</div>
@@ -672,6 +670,8 @@ async function syncToSheets(){
     if(total===0){_syncing=false;return;}
     const res=await fetch(SHEETS_URL,{
       method:'POST',
+      redirect:'follow',
+      headers:{'Content-Type':'text/plain'},
       body:JSON.stringify({action:'syncAll',data})
     });
     const json=await res.json();
@@ -693,7 +693,8 @@ async function loadFromSheets(){
   if(!SHEETS_URL)return false;
   try{
     showLoad('Cargando desde Google Sheets...');
-    const res=await fetch(SHEETS_URL+'?action=getAll');
+    // GET sin parámetros carga todos los stores
+    const res=await fetch(SHEETS_URL,{method:'GET',redirect:'follow'});
     const json=await res.json();
     if(!json.ok||!json.data)return false;
     const total=Object.values(json.data).reduce((a,b)=>a+b.length,0);
@@ -810,21 +811,37 @@ async function boot(){
     // Si la DB está vacía intentar recuperar: primero backup local, luego Sheets
     const eqsCheck=await getAll('equipos');
     if(eqsCheck.length===0){
-      // Intentar restaurar desde backup local (localStorage)
-      const localBk=localStorage.getItem('a6_backup_latest');
-      if(localBk){
-        try{
-          const bk=JSON.parse(localBk);
-          const total=Object.values(bk.data||{}).reduce((a,b)=>a+b.length,0);
-          if(total>0){
-            for(const s of STORES){
-              if(bk.data[s]&&bk.data[s].length) await bulkPut(s,bk.data[s]);
-            }
-            toast('✅ Datos restaurados desde backup local ('+total+' registros)','ok');
+      // Intentar en orden: 1) Sheets (si configurado), 2) backup local
+      if(SHEETS_URL){
+        showLoad('Cargando datos desde Google Sheets...');
+        const ok=await loadFromSheets();
+        if(!ok){
+          // Sheets no funcionó → intentar backup local
+          const localBk=localStorage.getItem('a6_backup_latest');
+          if(localBk){
+            try{
+              const bk=JSON.parse(localBk);
+              const total=Object.values(bk.data||{}).reduce((a,b)=>a+b.length,0);
+              if(total>0){
+                for(const s of STORES){if(bk.data[s]&&bk.data[s].length)await bulkPut(s,bk.data[s]);}
+                toast('✅ Datos restaurados desde backup local ('+total+' registros)','ok');
+              }
+            }catch(e){console.warn('Backup restore failed:',e);}
           }
-        }catch(e){console.warn('Backup restore failed:',e);}
-      } else if(SHEETS_URL){
-        await loadFromSheets();
+        }
+      } else {
+        // Sin Sheets → intentar backup local
+        const localBk=localStorage.getItem('a6_backup_latest');
+        if(localBk){
+          try{
+            const bk=JSON.parse(localBk);
+            const total=Object.values(bk.data||{}).reduce((a,b)=>a+b.length,0);
+            if(total>0){
+              for(const s of STORES){if(bk.data[s]&&bk.data[s].length)await bulkPut(s,bk.data[s]);}
+              toast('✅ Datos restaurados desde backup local ('+total+' registros)','ok');
+            }
+          }catch(e){console.warn('Backup restore failed:',e);}
+        }
       }
     }
     // SIEMPRE renderizar el home
