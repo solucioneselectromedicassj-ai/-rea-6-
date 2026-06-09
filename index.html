@@ -279,6 +279,7 @@ td{padding:.4rem .52rem;vertical-align:middle}
     <div class="htit">ÁREA 6<small>Ing. Clínica · Rawson</small></div>
     <div class="hsp"></div>
     <button class="hib" onclick="goHome()" title="Tablero">🏠</button>
+    <span id="syncDot" title="Estado sync" style="font-size:.65rem;color:rgba(255,255,255,.7);cursor:pointer" onclick="syncToSheets().then(()=>toast('Sincronizado ✔','ok'))">●</span>
     <button class="hib" onclick="showAdmin()">⚙️</button>
     <button class="hib" onclick="doLogout()" style="opacity:.85">⏏</button>
   </div>
@@ -409,13 +410,11 @@ td{padding:.4rem .52rem;vertical-align:middle}
         <div class="stitle">Datos locales</div>
         <!-- Sheets -->
         <div class="stitle">🔗 Google Sheets (sincronización)</div>
-        <div id="sheetsSyncStatus" style="font-size:.7rem;color:var(--dim);margin-bottom:.4rem">
-          ${SHEETS_URL?'✅ Conectado':'⚠️ Sin configurar'}
-        </div>
+        <div id="sheetsSyncStatus" style="font-size:.7rem;color:var(--dim);margin-bottom:.4rem">⏳ Verificando...</div>
         <div style="display:flex;gap:.38rem;flex-wrap:wrap;margin-bottom:.65rem">
-          <button class="btn baz2" onclick="configurarSheets()">🔗 Configurar Sheets</button>
-          ${SHEETS_URL?`<button class="btn bve" onclick="syncToSheets()">🔄 Sincronizar ahora</button>`:''}
-          ${SHEETS_URL?`<button class="btn bgr" onclick="cargarDesdeSheets()">⬇ Cargar desde Sheets</button>`:''}
+          <button class="btn baz2" onclick="configurarSheets()">🔗 Configurar</button>
+          <button class="btn bve" onclick="syncToSheets().then(()=>toast('Sincronizado ✔','ok'))">🔄 Sincronizar</button>
+          <button class="btn bgr" onclick="cargarDesdeSheets()">⬇ Cargar Sheets</button>
         </div>
         <!-- Backup -->
         <div class="stitle">💾 Backup local</div>
@@ -525,8 +524,16 @@ function openDB(){
 }
 const os=(s,m='readonly')=>db.transaction(s,m).objectStore(s);
 function getAll(s){return new Promise((ok,er)=>{const r=os(s).getAll();r.onsuccess=e=>ok(e.target.result||[]);r.onerror=e=>er(e.target.error)})}
-function put(s,o){return new Promise((ok,er)=>{const r=os(s,'readwrite').put(o);r.onsuccess=e=>ok(e.target.result);r.onerror=e=>er(e.target.error)})}
-function del(s,id){return new Promise((ok,er)=>{const r=os(s,'readwrite').delete(id);r.onsuccess=ok;r.onerror=e=>er(e.target.error)})}
+function put(s,o){return new Promise((ok,er)=>{
+  const r=os(s,'readwrite').put(o);
+  r.onsuccess=e=>{ok(e.target.result);scheduleAutoBackup();scheduleSheetsSync();}
+  r.onerror=e=>er(e.target.error);
+})}
+function del(s,id){return new Promise((ok,er)=>{
+  const r=os(s,'readwrite').delete(id);
+  r.onsuccess=()=>{ok();scheduleAutoBackup();scheduleSheetsSync();}
+  r.onerror=e=>er(e.target.error);
+})}
 function clr(s){return new Promise((ok,er)=>{const r=os(s,'readwrite').clear();r.onsuccess=ok;r.onerror=e=>er(e.target.error)})}
 function bulkPut(s,rows){return new Promise((ok,er)=>{const t=db.transaction(s,'readwrite'),o=t.objectStore(s);rows.forEach(r=>o.put(r));t.oncomplete=ok;t.onerror=e=>er(e.target.error)})}
 async function getMeta(k){return new Promise(ok=>{const r=os('meta').get(k);r.onsuccess=e=>ok(e.target.result?.value||null);r.onerror=()=>ok(null)})}
@@ -663,30 +670,51 @@ function scheduleSheetsSync(){
 async function syncToSheets(){
   if(!SHEETS_URL||_syncing)return;
   _syncing=true;
+  const statusEl=document.getElementById('sheetsSyncStatus');
+  if(statusEl)statusEl.textContent='🔄 Sincronizando...';
   try{
     const data={};
     for(const s of STORES){
       try{data[s]=await getAll(s);}catch(e){data[s]=[];}
     }
     const total=Object.values(data).reduce((a,b)=>a+b.length,0);
-    if(total===0){_syncing=false;return;}
-    const res=await fetch(SHEETS_URL,{
+    if(total===0){_syncing=false;if(statusEl)statusEl.textContent='⚠️ Sin datos';return;}
+    // Usar XHR para manejar redirects de Apps Script
+    const json=await fetchSheet(SHEETS_URL,{
       method:'POST',
       body:JSON.stringify({action:'syncAll',data})
     });
-    const json=await res.json();
-    if(json.ok){
-      localStorage.setItem('a6_sheets_last_sync',new Date().toLocaleString('es-AR'));
+    if(json&&json.ok){
+      const ts=new Date().toLocaleString('es-AR');
+      localStorage.setItem('a6_sheets_last_sync',ts);
       localStorage.setItem('a6_sheets_last_count',String(total));
-      // Actualizar indicador
-      const el=document.getElementById('sheetsSyncStatus');
-      if(el)el.textContent='✅ Sheets: '+new Date().toLocaleTimeString('es-AR');
+      if(statusEl)statusEl.textContent='✅ Sync: '+new Date().toLocaleTimeString('es-AR')+' · '+total+' registros';
+      const dot=document.getElementById('syncDot');
+      if(dot){dot.textContent='✅';dot.title='Sincronizado: '+new Date().toLocaleTimeString('es-AR');}
+    } else {
+      if(statusEl)statusEl.textContent='⚠️ Error: '+(json&&json.error?json.error:'respuesta inválida');
     }
   }catch(e){
     console.warn('Sheets sync error:',e.message);
-    const el=document.getElementById('sheetsSyncStatus');
-    if(el)el.textContent='⚠️ Sin conexión a Sheets';
+    if(statusEl)statusEl.textContent='⚠️ Sin conexión · '+e.message;
+    const dot=document.getElementById('syncDot');if(dot){dot.textContent='⚠';dot.style.color='rgba(255,200,0,.9)';}
   }finally{_syncing=false;}
+}
+
+function fetchSheet(url,opts={}){
+  return new Promise((resolve,reject)=>{
+    const xhr=new XMLHttpRequest();
+    xhr.open(opts.method||'GET',url,true);
+    xhr.setRequestHeader('Content-Type','text/plain');
+    xhr.onload=()=>{
+      try{resolve(JSON.parse(xhr.responseText));}
+      catch(e){reject(new Error('Respuesta inválida: '+xhr.responseText.substring(0,80)));}
+    };
+    xhr.onerror=()=>reject(new Error('Error de red'));
+    xhr.ontimeout=()=>reject(new Error('Timeout'));
+    xhr.timeout=30000;
+    if(opts.body)xhr.send(opts.body);else xhr.send();
+  });
 }
 
 async function loadFromSheets(){
