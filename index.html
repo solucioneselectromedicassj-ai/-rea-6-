@@ -656,6 +656,40 @@ function checkBackupStatus(){
 
 
 // ════════════════════════════════════
+// NORMALIZACIÓN DE DATOS
+// ════════════════════════════════════
+async function normalizarSubServicios(){
+  try{
+    const RENAMES = [
+      // [servicio, subServicio viejo, subServicio nuevo]
+      ['LABORATORIO CENTRAL', 'BIOLOGIA MOLECULAR', 'Lab. Biología Molecular'],
+      ['LABORATORIO CENTRAL', 'LAB. BIOLOGIA MOLECULAR', 'Lab. Biología Molecular'],
+      ['LABORATORIO CENTRAL', 'Lab. Biologia Molecular', 'Lab. Biología Molecular'],
+    ];
+    const stores = ['equipos','expedientes','tareas','compras','ordenes','actas','bajas'];
+    let total = 0;
+    for(const store of stores){
+      const rows = await getAll(store);
+      for(const row of rows){
+        for(const [srv, oldSub, newSub] of RENAMES){
+          const rowSrv = (row.servicio||'').toUpperCase();
+          const rowSub = (row.subServicio||'');
+          if(rowSrv === srv.toUpperCase() && rowSub.toUpperCase() === oldSub.toUpperCase() && rowSub !== newSub){
+            await put(store, {...row, subServicio: newSub});
+            total++;
+          }
+        }
+      }
+    }
+    if(total > 0){
+      console.log('Normalizados: '+total+' registros');
+      scheduleSheetsSync();
+    }
+  }catch(e){console.warn('Normalización:', e.message);}
+}
+
+
+// ════════════════════════════════════
 // GOOGLE SHEETS SYNC
 // ════════════════════════════════════
 let _syncTimer=null;
@@ -855,6 +889,8 @@ async function boot(){
         await loadFromSheets();
       }
     }
+    // Normalizar sub-servicios duplicados
+    await normalizarSubServicios();
     // SIEMPRE renderizar el home
     await renderHome();
     await loadDates();await checkAlerts();
