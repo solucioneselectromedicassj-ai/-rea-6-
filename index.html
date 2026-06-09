@@ -666,6 +666,24 @@ async function normalizarSubServicios(){
       ['LABORATORIO CENTRAL', 'LAB. BIOLOGIA MOLECULAR', 'Lab. Biología Molecular'],
       ['LABORATORIO CENTRAL', 'Lab. Biologia Molecular', 'Lab. Biología Molecular'],
     ];
+    // Mover equipos cuyo servicio sea "Microscopio Nikon" o similar a Ingeniería Clínica
+    const SRV_RENAME = [
+      // [servicio viejo, servicio nuevo, subServicio nuevo]
+      ['MICROSCOPIO NIKON', 'INGENIERIA CLINICA', 'Equipos Generales'],
+      ['Microscopio Nikon', 'INGENIERIA CLINICA', 'Equipos Generales'],
+      ['microscopio nikon', 'INGENIERIA CLINICA', 'Equipos Generales'],
+    ];
+    // Renombrar servicios completos
+    for(const store of stores){
+      const rows2=await getAll(store);
+      for(const row of rows2){
+        for(const [oldSrv, newSrv, newSub] of SRV_RENAME){
+          if((row.servicio||'').toUpperCase()===oldSrv.toUpperCase()){
+            await put(store,{...row,servicio:newSrv,subServicio:newSub});
+          }
+        }
+      }
+    }
     const stores = ['equipos','expedientes','tareas','compras','ordenes','actas','bajas'];
     let total = 0;
     for(const store of stores){
@@ -725,6 +743,7 @@ async function syncToSheets(){
       if(statusEl)statusEl.textContent='✅ Sync: '+new Date().toLocaleTimeString('es-AR')+' · '+total+' registros';
       const dot=document.getElementById('syncDot');
       if(dot){dot.textContent='✅';dot.title='Sincronizado: '+new Date().toLocaleTimeString('es-AR');}
+      scheduleAutoBackup();
     } else {
       if(statusEl)statusEl.textContent='⚠️ Error: '+(json&&json.error?json.error:'respuesta inválida');
     }
