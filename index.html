@@ -2998,11 +2998,11 @@ async function smartMerge(k,newData){
   // Only add new records from Excel that don't exist in app
   const KEY={eq:'serie',ex:'numero',or:'numero'};
   const keyF=KEY[k];
-  const exMap={};existing.forEach(r=>{const kv=(r[keyF]||'').trim();if(kv)exMap[kv]=r});
+  const exMap={};existing.forEach(r=>{const kv=String(r[keyF]||'').trim();if(kv)exMap[kv]=r});
   const merged=[];let fromExcel=0,fromApp=0;const conflicts=[];
 
   newData.forEach(nr=>{
-    const kv=(nr[keyF]||'').trim();
+    const kv=String(nr[keyF]||'').trim();
     const er=exMap[kv];
     if(!kv||!er){merged.push(nr);fromExcel++;if(kv)delete exMap[kv];}
     else{
